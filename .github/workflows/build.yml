@@ -4,6 +4,12 @@ on:
   push:
     branches: [ 'main' ]
     paths: [ 'version.txt' ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '镜像与发布标签（逗号分隔），例如 v0.0.1,latest'
+        required: false
+        type: string
 
 env:
   APP_NAME: openlistsync
@@ -17,6 +23,8 @@ jobs:
     outputs:
       TAG_LIST: ${{ steps.getVersion.outputs.TAG_LIST }}
       VERSION: ${{ steps.getVersion.outputs.VERSION }}
+    env:
+      INPUT_VERSION: ${{ github.event.inputs.version }}
 
     steps:
       - name: 检出仓库代码
@@ -25,7 +33,11 @@ jobs:
       - id: getVersion
         name: 获取版本号
         run: |
-          versions=$(head -n 1 version.txt)
+          if [ -n "$INPUT_VERSION" ]; then
+            versions="$INPUT_VERSION"
+          else
+            versions=$(head -n 1 version.txt)
+          fi
           tagList=""
           IFS=',' read -ra versionList <<< "$versions"
           cuVersion="${versionList[0]}"
