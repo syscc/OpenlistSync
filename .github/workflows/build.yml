@@ -4,6 +4,10 @@ on:
   push:
     branches: [ 'main' ]
     paths: [ 'version.txt' ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 env:
   APP_NAME: openlistsync
