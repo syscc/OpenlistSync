@@ -134,16 +134,19 @@
 
 * docker
 
-docker-compose.yaml
+docker-compose.yaml 示例：
+
+```yaml
+version: "3.8"
 services:
   openlistsync:
     image: syscc/openlistsync:latest
-    restart: always
     container_name: openlistsync
+    restart: always
     network_mode: bridge
     ports:
       - "8023:8023"
-    user: '1000:1001'
+    user: "1000:1001"
     environment:
       - dst=/shanct
       - TVsource=/media/电视剧
@@ -154,8 +157,7 @@ services:
       - REFRESH_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
     volumes:
       - ./:/app/data
-
-在绿联NAS中使用可以参考这里（示例链接待更新），在其他支持 Docker 的 NAS 中使用大同小异
+```
 
 ### 再使用
 
