@@ -12,7 +12,7 @@ permissions:
 env:
   APP_NAME: openlistsync
   DOCKER_USER: syscc
-  DOCKER_NAME: OpenlistSync
+  DOCKER_NAME: openlistsync
 
 jobs:
   get-version:
@@ -234,8 +234,8 @@ jobs:
     strategy:
       matrix:
         os:
-          - macos-13
-          - macos-14
+          - macos-15
+          - macos-15-intel
     runs-on: ${{ matrix.os }}
     needs: [get-version, build-frontend]
     env:
@@ -246,7 +246,7 @@ jobs:
       - name: 判断平台
         run: |
           os=${{ matrix.os }}
-          if [ "$os" = "macos-13" ]; then
+          if [ "$os" = "macos-15-intel" ]; then
             PLATFORM="amd64"
           else
             PLATFORM="arm64"
