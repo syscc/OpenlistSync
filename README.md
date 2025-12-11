@@ -1,6 +1,6 @@
 <div align="center">
   <a href=""><img width="200px" alt="logo" src="frontend/public/logo/logo.svg"/></a>
-  <p><em>OpenListSync 是一个适用于 OpenList的自动化同步工具。</em></p>
+  <p><em>OpenlistSync是一个适用于OpenList的自动化同步工具/Sync for OpenList</em></p>
   <div>
     <a href="https://github.com/syscc/OpenlistSync/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/syscc/OpenlistSync" alt="License" />
