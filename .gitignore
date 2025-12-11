@@ -1,0 +1,21 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Local data and runtime artifacts
+data/**
+!data/env.sample
+
+# Logs and pid
+*.log
+*.pid
+
+# Frontend build/dev noise
+frontend/node_modules/
+
+# IDE
+.vscode/
+.DS_Store
+
+# Misc
+*.tmp

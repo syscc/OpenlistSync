@@ -1,0 +1,4 @@
+tornado==6.4.1
+apscheduler==3.10.4
+pathspec==0.12.1
+requests==2.32.3

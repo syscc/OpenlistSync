@@ -1,0 +1,57 @@
+import request from '@/utils/request'
+
+// 登录
+export function login(data) {
+    const fd = new URLSearchParams();
+    fd.append('userName', data.userName);
+    fd.append('passwd', data.passwd);
+    return request({
+        url: '/noAuth/login',
+        headers: {
+            isMask: false,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        method: 'post',
+        data: fd.toString()
+    })
+}
+
+// 登出
+export function logout() {
+	return request({
+		url: '/noAuth/login',
+		method: 'delete'
+	})
+}
+
+// 重置密码
+export function resetPwd(data) {
+	return request({
+		url: '/noAuth/login',
+		headers: {
+			isMask: false
+		},
+		method: 'put',
+		data
+	})
+}
+
+// 获取当前用户信息
+export function user() {
+	return request({
+		url: '/user',
+		method: 'get'
+	})
+}
+
+// 修改当前用户密码
+export function editPwd(data) {
+	return request({
+		url: '/user',
+		headers: {
+			isMask: false
+		},
+		method: 'put',
+		data
+	})
+}

@@ -1,0 +1,27 @@
+# Do not copy local data into image
+/data
+
+# Git and CI
+.git
+.gitignore
+.github
+
+# Frontend sources and dev deps (we bundle built assets via spec)
+frontend/node_modules
+frontend/src
+
+# Local caches and logs
+__pycache__
+*.pyc
+*.log
+*.pid
+
+# Docs and extra dockerfiles not needed at runtime
+dockerfiles
+README
+README/**
+doc
+
+# OS junk
+.DS_Store
+
