@@ -77,26 +77,33 @@ def refresh_after_task(job, status):
     # 组装需刷新基本路径
     base_paths = []
     name = remark
-    env_refresh = os.getenv('REFRESH_TV_TARGETS') if is_tv else os.getenv('REFRESH_MOV_TARGETS')
-    if env_refresh:
-        raw = [p.strip() for p in re.split(r"[,;:]", env_refresh) if p and p.strip() != '']
-        tv_prefix = _select_latest_odc_prefix(client, 'tv')
-        mov_prefix = _select_latest_odc_prefix(client, 'mov')
-        for base in raw:
-            base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
-            if not base.startswith('/'):
-                base = '/' + base
-            base = re.sub(r"/{2,}", "/", base)
-            base_paths.append(f"{base.rstrip('/')}/{category}/{name}")
+    only_shanct = (is_tv and dsts and all(p.startswith('/shanct/电视剧') for p in dsts))
+    if is_tv and only_shanct:
+        # 仅同步到 /shanct 时，只刷新 /shanct 与 /videos
+        base_paths = [
+            f"/shanct/电视剧/{name}",
+            f"/videos/电视剧/{name}"
+        ]
     else:
-        if is_tv:
-            only_shanct = dsts and all(p.startswith('/shanct/电视剧') for p in dsts)
-            if only_shanct:
-                base_paths = [
-                    f"/shanct/电视剧/{name}",
-                    f"/videos/电视剧/{name}"
-                ]
-            else:
+        env_refresh = os.getenv('REFRESH_TV_TARGETS') if is_tv else os.getenv('REFRESH_MOV_TARGETS')
+        dedup = []
+        seen = set()
+        if env_refresh:
+            raw = [p.strip() for p in re.split(r"[,;:]", env_refresh) if p and p.strip() != '']
+            tv_prefix = _select_latest_odc_prefix(client, 'tv')
+            mov_prefix = _select_latest_odc_prefix(client, 'mov')
+            for base in raw:
+                base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
+                if not base.startswith('/'):
+                    base = '/' + base
+                base = re.sub(r"/{2,}", "/", base).rstrip('/')
+                path = f"{base}/{category}/{name}"
+                if path not in seen:
+                    dedup.append(path)
+                    seen.add(path)
+        else:
+            # 默认回退逻辑
+            if is_tv:
                 for p in dsts:
                     m = re.search(r"/ODC/(tv\d+)/电视剧/", p)
                     if m:
@@ -104,23 +111,30 @@ def refresh_after_task(job, status):
                         break
                 if odc_prefix is None:
                     odc_prefix = _select_latest_odc_prefix(client, 'tv')
-                base_paths = [
-                    f"/115/videos/电视剧/{name}",
-                    f"/ODC/{odc_prefix}/电视剧/{name}",
-                    f"/videos/电视剧/{name}"
-                ]
-        else:
-            for p in dsts:
-                m = re.search(r"/ODC/(mov\d+)/电影/", p)
-                if m:
-                    odc_prefix = m.group(1)
-                    break
-            if odc_prefix is None:
-                odc_prefix = _select_latest_odc_prefix(client, 'mov')
-            base_paths = [
-                f"/115/videos/电影/{name}",
-                f"/ODC/{odc_prefix}/电影/{name}"
-            ]
+                for base in [f"/115/videos/{category}", f"/ODC/{odc_prefix}/{category}"]:
+                    path = f"{base}/{name}"
+                    if path not in seen:
+                        dedup.append(path)
+                        seen.add(path)
+            else:
+                for p in dsts:
+                    m = re.search(r"/ODC/(mov\d+)/电影/", p)
+                    if m:
+                        odc_prefix = m.group(1)
+                        break
+                if odc_prefix is None:
+                    odc_prefix = _select_latest_odc_prefix(client, 'mov')
+                for base in [f"/115/videos/{category}", f"/ODC/{odc_prefix}/{category}"]:
+                    path = f"{base}/{name}"
+                    if path not in seen:
+                        dedup.append(path)
+                        seen.add(path)
+        # 始终追加 /videos 路径
+        videos_path = f"/videos/{category}/{name}"
+        if videos_path not in seen:
+            dedup.append(videos_path)
+            seen.add(videos_path)
+        base_paths = dedup
     if not base_paths:
         return
     # 解析 Season 并刷新
