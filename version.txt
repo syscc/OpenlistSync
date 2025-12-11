@@ -10,3 +10,4 @@ v0.0.1,latest
 v0.2.2-dev-build0
 v0.2.2-pre-build2
 v0.2.2,latest
+# retrigger build at 2025-12-11 10:00
