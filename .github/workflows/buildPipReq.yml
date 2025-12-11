@@ -4,6 +4,7 @@ on:
   push:
     branches: [ 'main' ]
     paths: [ 'dockerfiles/pipReq.Dockerfile', 'requirements.txt' ]
+  workflow_dispatch:
 
 jobs:
   build_docker:
