@@ -311,6 +311,7 @@ jobs:
         run: |
           version_first=$(echo $VERSION | cut -d'-' -f1)
           LOG_FILE="doc/changelog/$version_first.md"
+          mkdir -p doc/changelog
           if [ ! -f "$LOG_FILE" ]; then
             touch "$LOG_FILE"
             echo "$VERSION" > "$LOG_FILE"
