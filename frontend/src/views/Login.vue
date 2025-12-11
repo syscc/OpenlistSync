@@ -4,7 +4,7 @@
 			<i :class="vuex_theme === 'dark' ? 'el-icon-sunrise' : 'el-icon-moon'"></i>
 		</div>
 		<div class="loginArea" :style="{ background: vuex_theme === 'dark' ? 'rgba(16, 30, 65, 0.95)' : 'rgba(255, 255, 255, 0.95)' }">
-			<div class="logo">桃桃的自动同步工具</div>
+			<div class="logo">OpenList同步工具</div>
 			<div class="title">密码登录</div>
 			<el-form :model="loginForm" :rules="rules" ref="loginForm" label-width="0">
 				<el-form-item prop="userName">
@@ -257,13 +257,13 @@
 				padding: 19px 20px;
 			}
 
-			.logo {
-				background-image: url('/logo-200-64.png');
-				background-position: center 0;
-				background-repeat: no-repeat;
-				width: 400px;
-				padding-top: 80px;
-				text-align: center;
+            .logo {
+                background-image: url('/logo/logo.svg');
+                background-position: center 0;
+                background-repeat: no-repeat;
+                width: 400px;
+                padding-top: 80px;
+                text-align: center;
 				letter-spacing: 6px;
 				font-size: 20px;
 			}

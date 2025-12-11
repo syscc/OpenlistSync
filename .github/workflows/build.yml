@@ -6,9 +6,9 @@ on:
     paths: [ 'version.txt' ]
 
 env:
-  APP_NAME: taoSync
-  DOCKER_USER: dr34m
-  DOCKER_NAME: tao-sync
+  APP_NAME: openlistsync
+  DOCKER_USER: syscc
+  DOCKER_NAME: openlistsync
 
 jobs:
   get-version:

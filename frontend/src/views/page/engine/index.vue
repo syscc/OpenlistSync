@@ -4,7 +4,7 @@
 		<div v-else class="card-box">
 			<div class="card-item" v-for="item in alistList">
 				<div class="card-item-top">
-					<el-image src="/alist.svg" fit="contain" style="width: 60px;height: 60px;"></el-image>
+					<el-image src="/logo/logo.svg" fit="contain" style="width: 60px;height: 60px;"></el-image>
 					<div style="margin-left: 12px;">
 						<div class="card-item-user">{{item.userName}}
 							<div class="card-item-remark" v-if="item.remark != null">[{{item.remark}}]</div>
@@ -36,7 +36,7 @@
 						</el-form-item>
 						<el-form-item prop="token" label="令牌">
 							<el-input v-model="editData.token" show-password
-								:placeholder="`请输入令牌，${editFlag ? '留空表示不修改' : '请到AList管理-设置-其他中复制，保存后不要重置令牌'}`"
+							:placeholder="`请输入令牌，${editFlag ? '留空表示不修改' : '请到OpenList管理-设置-其他中复制，保存后不要重置令牌'}`"
 								@keyup.enter.native="submit"></el-input>
 						</el-form-item>
 					</el-form>
@@ -84,7 +84,7 @@
 					}],
 					token: [{
 						required: true,
-						message: '请输入令牌，请到AList管理-设置-其他中复制，保存后不要重置令牌否则令牌失效',
+						message: '请输入令牌，请到OpenList管理-设置-其他中复制，保存后不要重置令牌否则令牌失效',
 						trgger: 'blur'
 					}]
 				}

@@ -21,7 +21,7 @@ def getConfig():
     global sysConfig
     if sysConfig is None:
         passwdStr = getPasswordStr()
-        dbname = 'data/taoSync.db'
+        dbname = 'data/openlistsync.db'
         sCfg = {
             'port': 8023,
             'expires': 2,

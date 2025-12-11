@@ -9,6 +9,8 @@ __pycache__/
 front/
 venv/
 *.db
+*.DS_Store
+*冲突副本*
 
 build/
 dist/

@@ -1,0 +1,19 @@
+services:
+  openlistsync:
+    image: syscc/openlistsync:latest
+    restart: always
+    container_name: openlistsync
+    network_mode: bridge
+    ports:
+      - "8023:8023"
+    user: '1000:1001'
+    environment:
+      - dst=/shanct
+      - TVsource=/media/电视剧
+      - MOVsource=/media/电影
+      - SYNC_TV_TARGETS=/115/videos,/ODC/{odc_tv}
+      - SYNC_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
+      - REFRESH_TV_TARGETS=/115/videos,/ODC/{odc_tv},/videos
+      - REFRESH_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
+    volumes:
+      - ./:/app/data

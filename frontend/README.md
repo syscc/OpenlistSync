@@ -1,4 +1,4 @@
-# taoSync前端
+# OpenListSync 前端
 
 构建方法（需要nodejs 14.x）
 

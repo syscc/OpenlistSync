@@ -58,7 +58,7 @@ def testNotify(notify):
     测试通知配置
     :return:
     """
-    sendNotify(notify, 'TaoSync Test',
+    sendNotify(notify, 'OpenListSync Test',
                G('notify_test_msg'))
 
 

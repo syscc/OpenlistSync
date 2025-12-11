@@ -122,7 +122,7 @@ class JobTask:
         self.taskId = taskId
         self.jobClient = vm
         self.job = self.jobClient.job
-        self.alistClient = alistService.getClientById(self.job['alistId'])
+        self.alistClient = openlistService.getClientById(self.job['alistId'])
         self.createTime = time.time()
         # 已完成（包含成功或者失败）
         self.finish = []

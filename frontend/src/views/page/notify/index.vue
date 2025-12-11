@@ -85,7 +85,7 @@
 						<template v-else-if="editData.method == 2">
 							<div class="tip-box"><a
 									href="https://open.dingtalk.com/document/orgapp/custom-bot-creation-and-installation"
-									target="_blank">配置指南</a> 安全设置请采用[自定义关键字]，关键字内容为[TaoSync]，不含中括号</div>
+                                    target="_blank">配置指南</a> 安全设置请采用[自定义关键字]，关键字内容为[OpenListSync]，不含中括号</div>
 							<el-form-item prop="params.url" label="WebHook">
 								<el-input v-model="editData.params.url"
 									placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxxx"></el-input>

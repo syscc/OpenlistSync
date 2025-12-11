@@ -1,12 +1,12 @@
 <div align="center">
-  <a href=""><img width="200px" alt="logo" src="frontend/public/logo-200-64.png"/></a>
-  <p><em>TaoSync是一个适用于OpenList/AList v3+的自动化同步工具。</em></p>
+  <a href=""><img width="200px" alt="logo" src="frontend/public/logo/logo.svg"/></a>
+  <p><em>OpenListSync 是一个适用于 OpenList的自动化同步工具。</em></p>
   <div>
-    <a href="https://github.com/dr34m-cn/taosync/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/dr34m-cn/taosync" alt="License" />
+    <a href="https://github.com/syscc/OpenlistSync/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/syscc/OpenlistSync" alt="License" />
     </a>
-    <a href="https://github.com/dr34m-cn/taosync/actions/workflows/build.yml">
-      <img src="https://img.shields.io/github/actions/workflow/status/dr34m-cn/taosync/build.yml?branch=main" alt="Build status" />
+    <a href="https://github.com/syscc/OpenlistSync/actions/workflows/build.yml">
+      <img src="https://img.shields.io/github/actions/workflow/status/syscc/OpenlistSync/build.yml?branch=main" alt="Build status" />
     </a>
     <a href="https://www.python.org/">
       <img src="https://img.shields.io/badge/backend-python-326c9c.svg" alt="Python" />
@@ -14,25 +14,25 @@
     <a href="https://vuejs.org/">
       <img src="https://img.shields.io/badge/frontend-vue-42b883.svg" alt="Vue" />
     </a>
-    <a href="https://github.com/dr34m-cn/taosync/releases">
-      <img src="https://img.shields.io/github/release/dr34m-cn/taosync" alt="latest version" />
+    <a href="https://github.com/syscc/OpenlistSync/releases">
+      <img src="https://img.shields.io/github/release/syscc/OpenlistSync" alt="latest version" />
     </a>
-    <a href="https://github.com/dr34m-cn/taosync/releases">
-      <img src="https://img.shields.io/github/downloads/dr34m-cn/taosync/total?color=%239F7AEA&logo=github" alt="Downloads" />
+    <a href="https://github.com/syscc/OpenlistSync/releases">
+      <img src="https://img.shields.io/github/downloads/syscc/OpenlistSync/total?color=%239F7AEA&logo=github" alt="Downloads" />
     </a>
-    <a href="https://hub.docker.com/r/dr34m/tao-sync">
-      <img src="https://img.shields.io/docker/pulls/dr34m/tao-sync?color=%2348BB78&logo=docker&label=pulls" alt="DockerHub" />
+    <a href="https://hub.docker.com/r/syscc/openlistsync">
+      <img src="https://img.shields.io/docker/pulls/syscc/openlistsync?color=%2348BB78&logo=docker&label=pulls" alt="DockerHub" />
     </a>
   </div>
 </div>
 
 ---
 
-桃桃是我女儿的乳名，我是桃桃她爸，这也是本程序的logo。
+本程序改自开源项目 `taoSync`。
 
-本程序开发之初，主要是为了保存桃桃成长的照片，故名`taoSync`
+主要改动，通过MoviePilot入库通知自动同步下载的文件到OpenList。并刷新利用openlist 的 Strm 驱动自动更新 Strm文件自动入库
 
-**如果好用，请Star！非常感谢！**  [GitHub](https://github.com/dr34m-cn/taosync) [Gitee](https://gitee.com/dr34m/taosync) [DockerHub](https://hub.docker.com/r/dr34m/tao-sync)
+**如果好用，请 Star！非常感谢！**  [GitHub](https://github.com/syscc/OpenlistSync)  [DockerHub](https://hub.docker.com/r/syscc/openlistsync)
 
 <details>
 
@@ -109,7 +109,7 @@
 * 支持Docker，下载即用
 * 干净卸载，不用的时候删掉即可，无任何残留或依赖，不影响系统里其他程序
 * 密码加密不可逆，永远不会泄露您的密码，敏感信息均被加密，支持重置密码
-* 完全离线运行（仅连接AList），永不上传用户隐私
+* 完全离线运行（仅连接 OpenList），永不上传用户隐私
 * 完善的错误处理，稳定可靠，逻辑自洽；可能出错，但永不崩溃（我猜的）
 * 完善的日志，所有错误都会被记录
 * 引擎管理，可以自由增删改查`OpenList/AList`
@@ -127,20 +127,35 @@
 
 * 可执行程序
 
-前往[Release](https://github.com/dr34m-cn/taosync/releases)下载对应平台的可执行程序，直接执行
+前往[Release](https://github.com/syscc/OpenlistSync/releases)下载对应平台的可执行程序，直接执行
 
 > [!TIP]
-> 开机自启、守护进程等可以参考[OpenList的方式](https://docs.oplist.org/zh/guide/install/manual.html#%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B)，把其中的`openlist`改为`taoSync`；注意，本程序**不需要`server`参数**
+> 开机自启、守护进程等可以参考[OpenList的方式](https://docs.oplist.org/zh/guide/install/manual.html#%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B)，把其中的 `openlist` 改为 `openlistsync`；注意，本程序**不需要 `server` 参数**
 
 * docker
 
-```sh
-docker run -d --restart=always -p 8023:8023 -v /opt/data:/app/data --name=taoSync dr34m/tao-sync:latest
-```
+docker-compose.yaml
+services:
+  openlistsync:
+    image: syscc/openlistsync:latest
+    restart: always
+    container_name: openlistsync
+    network_mode: bridge
+    ports:
+      - "8023:8023"
+    user: '1000:1001'
+    environment:
+      - dst=/shanct
+      - TVsource=/media/电视剧
+      - MOVsource=/media/电影
+      - SYNC_TV_TARGETS=/115/videos,/ODC/{odc_tv}
+      - SYNC_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
+      - REFRESH_TV_TARGETS=/115/videos,/ODC/{odc_tv},/videos
+      - REFRESH_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
+    volumes:
+      - ./:/app/data
 
-把其中`/opt/data`替换为你实际的目录
-
-在绿联NAS中使用可以参考这里[如何在绿联NAS中使用TaoSync同步我的文件到各个网盘](https://dr34m.cn/2024/07/newpost-57/)，在其他支持Docker的NAS中使用大同小异
+在绿联NAS中使用可以参考这里（示例链接待更新），在其他支持 Docker 的 NAS 中使用大同小异
 
 ### 再使用
 
@@ -195,24 +210,71 @@ task_timeout=72
 
 </details>
 
+## Webhook 与自动同步
+
+- 端点：`POST /webhook`
+- 行为：
+  - 解析标题中“名称(年份)”并识别类型（是否包含 `Sxx`/`Exx`/`Exx-Exx` → 电视剧）
+  - 如果存在同名且启用的作业，默认延迟 60 秒后触发手动执行（可通过 `delay` 覆盖）
+  - 若不存在同名作业：检查源存在后自动创建仅手动作业并立即执行；OpenList API 始终使用第一个引擎
+  - 任务完成后根据刷新目标集合自动刷新到电影目录或电视剧最大季目录，并发送通知
+
+### 运行时环境变量
+
+| 变量 | 说明 | 示例 |
+|---|---|---|
+| `TVsource` | 电视剧源根 | `/media/电视剧` |
+| `MOVsource` | 电影源根 | `/media/电影` |
+| `dst` | 优先目标根，存在同名目录时仅同步到这里 | `/shanct` |
+| `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{odc_tv}` | `/115/videos,/ODC/{odc_tv}` |
+| `SYNC_MOV_TARGETS` | 电影同步目标根集合，支持 `{odc_mov}` | `/115/videos,/ODC/{odc_mov}` |
+| `REFRESH_TV_TARGETS` | 电视剧完成后刷新根集合，自动刷新 `.../Season X` | `/115/videos,/ODC/{odc_tv},/videos` |
+| `REFRESH_MOV_TARGETS` | 电影完成后刷新根集合，自动刷新到 `.../名称/` | `/115/videos,/ODC/{odc_mov}` |
+
+- 占位符说明：`{odc_tv}`/`{odc_mov}` 会替换为 `/ODC/tvX` 或 `/ODC/movX` 的最大值（扫描 `/ODC` 选择当前最大序号）。
+- 源存在判定：`TVsource` 或 `MOVsource` 下存在 `名称(年份)` 目录才会创建作业。
+
+### Docker Compose 示例
+
+```yaml
+services:
+  openlistsync:
+    image: syscc/openlistsync:latest
+    container_name: openlistsync
+    restart: always
+    ports:
+      - "8023:8023"
+    volumes:
+      - /opt/data:/app/data
+    environment:
+      - TVsource=/media/电视剧
+      - MOVsource=/media/电影
+      - dst=/shanct
+      - SYNC_TV_TARGETS=/115/videos,/ODC/{odc_tv}
+      - SYNC_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
+      - REFRESH_TV_TARGETS=/115/videos,/ODC/{odc_tv},/videos
+      - REFRESH_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
+```
+
+## 接口概览
+
+- `GET/POST/PUT/DELETE /svr/openlist` 引擎管理（列表、子目录、增删改）
+- `GET/POST/PUT/DELETE /svr/job` 作业管理（列表、详情、手动执行、启用/禁用、中止、删除）
+- `GET/POST/PUT/DELETE /svr/notify` 通知配置（列表、增删改、测试）
+- `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）
+
 ## 研发状态
 
-历史记录在[这里](https://github.com/dr34m-cn/taosync/tree/main/doc/changelog)；
+如需体验研发中的版本（可能存在明显错误或严重 bug，不建议小白尝试），可以到 [DockerHub](https://hub.docker.com/r/syscc/openlistsync) 或 [Release](https://github.com/syscc/OpenlistSync/releases) 获取最新的包含 `dev` 或 `pre` 的 tag。
 
-如想体验研发中的版本(可能存在明显错误或严重bug，不建议小白尝试)，可以尝试到[DockerHub](https://hub.docker.com/r/dr34m/tao-sync)或[Release](https://github.com/dr34m-cn/taosync/releases)找最新的含`dev`或`pre`的tag，例如`v0.1.0-dev-build0`
-
-### 规划中（随时改变or因太难不做了，概不负责）
-
-* windows版本优化（开机自启，隐藏页面，启动停止等）[#13](https://github.com/dr34m-cn/taosync/issues/13)
-* OpenList支持加密同步 [#18](https://github.com/dr34m-cn/taosync/issues/18)
-* 移动端适配（可能顺便开发个app？）
-* 支持本地引擎（不基于`OpenList`）
-* 本地引擎支持加密同步
-* 保留历史N个版本（N可自定义，可无限）
-* 配置导入导出
-* 多语言支持
-* linux一键安装、更新与卸载脚本
+规划方向：
+- Windows 版本优化（开机自启、隐藏页面、启动/停止）
+- OpenList 加密同步支持
+- 移动端适配
+- 本地引擎支持与加密
+- 配置导入导出、多语言支持
+- Linux 一键安装、更新与卸载脚本
 
 ## Star随时间
 
-[![Stargazers over time](https://starchart.cc/dr34m-cn/taosync.svg?variant=adaptive)](https://starchart.cc/dr34m-cn/taosync)
+[![Stargazers over time](https://starchart.cc/syscc/OpenlistSync.svg?variant=adaptive)](https://starchart.cc/syscc/OpenlistSync)

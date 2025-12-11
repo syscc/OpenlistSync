@@ -135,7 +135,7 @@
 					width: 140px;
 					height: 44.8px;
 					cursor: pointer;
-					background-image: url('/logo-200-64.png');
+                    background-image: url('/logo/logo.svg');
 					background-size: 140px 44.8px;
 					transition: all .3s ease-in-out;
 					background-repeat: no-repeat;
