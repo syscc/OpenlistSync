@@ -148,20 +148,20 @@ services:
       - "8023:8023"
     user: "1000:1001"
     environment:
-      - dst=/shanct
+      - dst=/shanct/电视剧
       - TVsource=/media/电视剧
       - MOVsource=/media/电影
-      - SYNC_TV_TARGETS=/115/videos,/ODC/{odc_tv}
-      - SYNC_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
-      - REFRESH_TV_TARGETS=/115/videos,/ODC/{odc_tv},/videos
-      - REFRESH_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
+      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧
+      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影
+      - REFRESH_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧
+      - REFRESH_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影
     volumes:
       - ./:/app/data
 ```
 
 ### 再使用
 
-访问`http://127.0.0.1:8023`
+访问`http://ip:8023`
 
 如果你没有修改，默认账号为`admin`，密码请到日志中查看输出，登录后请立即前往系统设置修改密码
 
@@ -227,11 +227,11 @@ task_timeout=72
 |---|---|---|
 | `TVsource` | 电视剧源根 | `/media/电视剧` |
 | `MOVsource` | 电影源根 | `/media/电影` |
-| `dst` | 优先目标根，存在同名目录时仅同步到这里 | `/shanct` |
-| `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{odc_tv}` | `/115/videos,/ODC/{odc_tv}` |
-| `SYNC_MOV_TARGETS` | 电影同步目标根集合，支持 `{odc_mov}` | `/115/videos,/ODC/{odc_mov}` |
-| `REFRESH_TV_TARGETS` | 电视剧完成后刷新根集合，自动刷新 `.../Season X` | `/115/videos,/ODC/{odc_tv},/videos` |
-| `REFRESH_MOV_TARGETS` | 电影完成后刷新根集合，自动刷新到 `.../名称/` | `/115/videos,/ODC/{odc_mov}` |
+| `dst` | 优先目标根（请包含分类），存在同名目录时仅同步到这里 | `/shanct/电视剧` 或 `/shanct/电影` |
+| `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{odc_tv}` | `/115/videos/电视剧,/ODC/{odc_tv}/电视剧` |
+| `SYNC_MOV_TARGETS` | 电影同步目标根集合，支持 `{odc_mov}` | `/115/videos/电影,/ODC/{odc_mov}/电影` |
+| `REFRESH_TV_TARGETS` | 电视剧完成后刷新根集合，自动刷新 `.../Season X` | `/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧` |
+| `REFRESH_MOV_TARGETS` | 电影完成后刷新根集合，自动刷新到 `.../名称/` | `/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影` |
 
 - 占位符说明：`{odc_tv}`/`{odc_mov}` 会替换为 `/ODC/tvX` 或 `/ODC/movX` 的最大值（扫描 `/ODC` 选择当前最大序号）。
 - 源存在判定：`TVsource` 或 `MOVsource` 下存在 `名称(年份)` 目录才会创建作业。
