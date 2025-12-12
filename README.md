@@ -1,5 +1,5 @@
 <div align="center">
-  <a href=""><img width="200px" alt="logo" src="frontend/public/logo/logo.svg"/></a>
+  <a href=""><img width="200px" alt="logo" src="https://github.com/syscc/OpenlistSync/raw/main/frontend/public/logo/logo.svg"/></a>
   <p><em>OpenlistSync是一个适用于OpenList的自动化同步工具Sync for OpenList</em></p>
   <div>
     <a href="https://github.com/syscc/OpenlistSync/blob/main/LICENSE">
@@ -33,42 +33,6 @@
 在原有的项目基础上主要改动，通过 [MoviePilot](https://github.com/jxxghp/MoviePilot) 入库通知自动同步下载的影视文件到 [OpenList](https://github.com/OpenListTeam/OpenList)；并刷新，利用 [OpenList](https://github.com/OpenListTeam/OpenList) 的 `Strm` 驱动自动更新 Strm 文件自动入库。
 
 **如果好用，请 Star！非常感谢！**  [GitHub](https://github.com/syscc/OpenlistSync)  [DockerHub](https://hub.docker.com/r/syscc/openlistsync)
-
-<details>
-
-<summary>点击展开截图</summary>
-
-由于更新频繁，截图仅供参考，以实际为准
-
-#### 作业详情
-
-![任务列表](README/作业详情.jpg)
-
-#### 引擎管理
-
-![引擎列表](README/引擎列表.png)
-
-#### 引擎编辑
-
-![引擎编辑](README/引擎编辑.png)
-
-#### 新建作业
-
-![新建作业](README/新建作业.jpg)
-
-#### 作业列表
-
-![作业列表](README/作业列表.png)
-
-#### 任务详情
-
-![任务详情](README/任务详情.png)
-
-#### 通知配置
-
-![任务详情](README/通知配置.jpg)
-
-</details>
 
 ## 须知
 
