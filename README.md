@@ -73,7 +73,7 @@
 ## 须知
 
 > [!IMPORTANT]
-> 使用本工具前你必须了解并且会使用[OpenList](https://docs.oplist.org/zh/)；本工具没有集成`OpenList`，你需要额外启动`OpenList`
+> 使用本工具前你必须了解并且会使用[OpenList](https://doc.oplist.org/；本工具没有集成`OpenList`，你需要额外启动`OpenList`
 
 > [!WARNING]
 > **警告！不要在外网暴露本系统，否则后果自负！**         
