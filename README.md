@@ -1,6 +1,6 @@
 <div align="center">
   <a href=""><img width="200px" alt="logo" src="frontend/public/logo/logo.svg"/></a>
-  <p><em>OpenlistSync是一个适用于OpenList的自动化同步工具/Sync for OpenList</em></p>
+  <p><em>OpenlistSync是一个适用于OpenList的自动化同步工具Sync for OpenList</em></p>
   <div>
     <a href="https://github.com/syscc/OpenlistSync/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/syscc/OpenlistSync" alt="License" />
@@ -28,9 +28,9 @@
 
 ---
 
-本程序改自开源项目 `taoSync`。
+本程序改自开源项目 `[taosync](https://github.com/dr34m-cn/taosync)`。
 
-主要改动，通过MoviePilot入库通知自动同步下载的文件到OpenList。并刷新利用openlist 的 Strm 驱动自动更新 Strm文件自动入库
+在原有的项目基础上主要改动，通过MoviePilot入库通知自动同步下载的影视文件到OpenList；并刷新，利用openlist的 `Strm` 驱动自动更新 Strm文件自动入库
 
 **如果好用，请 Star！非常感谢！**  [GitHub](https://github.com/syscc/OpenlistSync)  [DockerHub](https://hub.docker.com/r/syscc/openlistsync)
 
@@ -130,7 +130,7 @@
 前往[Release](https://github.com/syscc/OpenlistSync/releases)下载对应平台的可执行程序，直接执行
 
 > [!TIP]
-> 开机自启、守护进程等可以参考[OpenList的方式](https://docs.oplist.org/zh/guide/install/manual.html#%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B)，把其中的 `openlist` 改为 `openlistsync`；注意，本程序**不需要 `server` 参数**
+> 开机自启、守护进程等可以参考[OpenList的方式](https://doc.oplist.org/guide/installation/manual#%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B)，把其中的 `openlist` 改为 `openlistsync`；注意，本程序**不需要 `server` 参数**
 
 * docker
 
