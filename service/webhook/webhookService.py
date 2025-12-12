@@ -157,15 +157,23 @@ def handleWebhook(req):
                             return f"{prefix}1"
                     odc_prefix = _pick('tv' if tv_flag else 'mov')
                     srcPath = f"{media_root.rstrip('/')}/{remark}/"
-                    dst_env = os.getenv('dst')
+                    dst_env = os.getenv('dst_TV_TARGETS') if tv_flag else os.getenv('dst_MOV_TARGETS')
                     dsts = []
                     if dst_env and client is not None:
                         try:
-                            dst_root = dst_env.rstrip('/')
-                            exists_dirs = client.filePathList(dst_root)
-                            names = [d['path'] for d in exists_dirs]
-                            if remark in names:
-                                dsts = [f"{dst_root}/{remark}/"]
+                            raw_dst = [p.strip() for p in re.split(r"[,;:]", dst_env) if p and p.strip() != '']
+                            tv_prefix = _pick('tv')
+                            mov_prefix = _pick('mov')
+                            for base in raw_dst:
+                                base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
+                                if not base.startswith('/'):
+                                    base = '/' + base
+                                base = re.sub(r"/{2,}", "/", base).rstrip('/')
+                                exists_dirs = client.filePathList(base)
+                                names = [d['path'] for d in exists_dirs]
+                                if remark in names:
+                                    dsts = [f"{base}/{remark}/"]
+                                    break
                         except Exception:
                             pass
                     if not dsts:

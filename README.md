@@ -148,14 +148,17 @@ services:
       - "8023:8023"
     user: "1000:1001"
     environment:
-      - WEBHOOK_DELAY=60
-      - dst=/shanct/电视剧
-      - TVsource=/media/电视剧
-      - MOVsource=/media/电影
-      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧
-      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影
-      - REFRESH_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧
-      - REFRESH_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影
+      - WEBHOOK_DELAY=60             # Webhook延迟触发秒数
+      - TVsource=/media/电视剧        # 电视剧源根目录
+      - MOVsource=/media/电影        # 电影源根目录
+      - dst_TV_TARGETS=/shanct/电视剧 # 优先同步电视剧到此集合；支持 ,;: 分隔
+      - dst_MOV_TARGETS=/shanct/电影  # 优先同步电影到此集合；支持 ,;: 分隔
+      - dst_REFRESH_TV=/shanct/电视剧,/videos/电视剧 # 优先刷新电视剧集合；支持 ,;: 分隔
+      - dst_REFRESH_MOV=/shanct/电影,/videos/电影    # 优先刷新电影集合；支持 ,;: 分隔
+      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧   # 回退电视剧同步集合；{odc_tv} → /ODC/tvX
+      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影     # 回退电影同步集合；{odc_mov} → /ODC/movX
+      - REFRESH_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧 # 回退电视剧刷新集合
+      - REFRESH_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影   # 回退电影刷新集合
     volumes:
       - ./data:/app/data
 ```
@@ -228,11 +231,12 @@ task_timeout=72
 |---|---|---|
 | `TVsource` | 电视剧源根 | `/media/电视剧` |
 | `MOVsource` | 电影源根 | `/media/电影` |
-| `dst` | 优先目标根（原样使用），存在同名目录时仅同步到这里；仅在末尾追加“名称(年份)” | 例如 `/shanct/电视剧` 或 `/shanct/tv` |
+| `dst_TV_TARGETS` / `dst_MOV_TARGETS` | 优先同步根集合（原样使用），存在同名目录时仅同步到这里；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/shanct/电视剧` 或 `/shanct/电影` |
 | `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{odc_tv}`；仅在末尾追加“名称(年份)” | 例如 `/115/videos/电视剧,/ODC/{odc_tv}/电视剧` 或 `/115/videos/tv,/ODC/{odc_tv}/tv` |
 | `SYNC_MOV_TARGETS` | 电影同步目标根集合，支持 `{odc_mov}`；仅在末尾追加“名称(年份)” | 例如 `/115/videos/电影,/ODC/{odc_mov}/电影` 或 `/115/videos/mov,/ODC/{odc_mov}/mov` |
-| `REFRESH_TV_TARGETS` | 电视剧完成后刷新根集合（仅在末尾追加“名称(年份)”），自动解析最大季 | 例如 `/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧` 或 `/115/videos/tv,/ODC/{odc_tv}/tv,/videos/tv` |
-| `REFRESH_MOV_TARGETS` | 电影完成后刷新根集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影` 或 `/115/videos/mov,/ODC/{odc_mov}/mov,/videos/mov` |
+| `dst_REFRESH_TV` / `dst_REFRESH_MOV` | 优先刷新根集合（原样使用），仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/media/电视剧,/videos/电视剧` 或 `/media/电影,/videos/电影` |
+| `REFRESH_TV_TARGETS` | 回退电视剧刷新根集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电视剧,/ODC/{odc_tv}/电视剧` |
+| `REFRESH_MOV_TARGETS` | 回退电影刷新根集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电影,/ODC/{odc_mov}/电影` |
 
 - 占位符说明：`{odc_tv}`/`{odc_mov}` 会替换为 `/ODC/tvX` 或 `/ODC/movX` 的最大值（扫描 `/ODC` 选择当前最大序号）。
 - 源存在判定：`TVsource` 或 `MOVsource` 下存在 `名称(年份)` 目录才会创建作业。
