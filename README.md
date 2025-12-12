@@ -36,11 +36,10 @@
 
 ## 须知
 
-> [!IMPORTANT]
+> **重要**
 > 使用本工具前你必须了解并且会使用 [OpenList](https://doc.oplist.org/)；本工具没有集成 OpenList，你需要额外启动 OpenList
 
-> [!WARNING]
-> **警告！不要在外网暴露本系统，否则后果自负！**         
+> **警告！不要在外网暴露本系统，否则后果自负！**
 > 本系统已经做了一定的安全方面的工作，但仍不能保证绝对安全。如确实需要，请务必使用强密码，并使用`SSL`
 
 ## 用途举例
@@ -93,7 +92,7 @@
 
 前往[Release](https://github.com/syscc/OpenlistSync/releases)下载对应平台的可执行程序，直接执行
 
-> [!TIP]
+> **提示**
 > 开机自启、守护进程等可以参考[OpenList的方式](https://doc.oplist.org/guide/installation/manual#%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B)，把其中的 `openlist` 改为 `openlistsync`；注意，本程序**不需要 `server` 参数**
 
 * docker
@@ -134,7 +133,7 @@ services:
 
 如果你没有修改，默认账号为`admin`，密码请到日志中查看输出，登录后请立即前往系统设置修改密码
 
-> [!NOTE]
+> **注意**
 > 如果没有显示这个日志，可以到同级目录的`data/log/sys_xxx.log`文件查看，通常在第一行
 
 进入系统后先到`引擎管理`菜单创建引擎，然后前往`作业管理`创建同步作业
