@@ -71,59 +71,73 @@ def refresh_after_task(job, status):
     remark = job.get('remark') or ''
     src = job.get('srcPath') or ''
     dsts = (job.get('dstPath') or '').split(':') if job.get('dstPath') else []
-    is_tv = '/电视剧/' in src
-    category = '电视剧' if is_tv else '电影'
+    src_norm = re.sub(r"/{2,}", "/", src).rstrip('/') + '/'
+    tv_src_env = (os.getenv('TVsource') or '').strip()
+    mov_src_env = (os.getenv('MOVsource') or '').strip()
+    tv_src_norm = re.sub(r"/{2,}", "/", tv_src_env).rstrip('/') + '/' if tv_src_env else ''
+    mov_src_norm = re.sub(r"/{2,}", "/", mov_src_env).rstrip('/') + '/' if mov_src_env else ''
+    is_tv = bool(tv_src_norm and src_norm.startswith(tv_src_norm))
     odc_prefix = None
-    # 组装需刷新基本路径
     base_paths = []
     name = remark
-    env_refresh = os.getenv('dst_REFRESH_TV') if is_tv else os.getenv('dst_REFRESH_MOV')
-    if not env_refresh:
-        env_refresh = os.getenv('REFRESH_TV_TARGETS') if is_tv else os.getenv('REFRESH_MOV_TARGETS')
-        dedup = []
-        seen = set()
-        if env_refresh:
-            raw = [p.strip() for p in re.split(r"[,;:]", env_refresh) if p and p.strip() != '']
-            tv_prefix = _select_latest_odc_prefix(client, 'tv')
-            mov_prefix = _select_latest_odc_prefix(client, 'mov')
-            for base in raw:
-                base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
-                if not base.startswith('/'):
-                    base = '/' + base
+    dedup = []
+    seen = set()
+    tv_src = os.getenv('TVsource') or ''
+    mov_src = os.getenv('MOVsource') or ''
+    def _expand_targets(env_s):
+        arr = []
+        if not env_s:
+            return arr
+        raw = [p.strip() for p in re.split(r"[,;:]", env_s) if p and p.strip() != '']
+        tv_prefix = _select_latest_odc_prefix(client, 'tv')
+        mov_prefix = _select_latest_odc_prefix(client, 'mov')
+        for base in raw:
+            base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
+            if not base.startswith('/'):
+                base = '/' + base
+            base = re.sub(r"/{2,}", "/", base).rstrip('/')
+            arr.append(base)
+        return arr
+    dst_target_env = os.getenv('DST_TV_TARGETS') if is_tv else os.getenv('DST_MOV_TARGETS')
+    sync_target_env = os.getenv('SYNC_TV_TARGETS') if is_tv else os.getenv('SYNC_MOV_TARGETS')
+    dst_bases = _expand_targets(dst_target_env)
+    sync_bases = _expand_targets(sync_target_env)
+    dst_used = False
+    for d in dsts:
+        for b in dst_bases:
+            if d.startswith(b.rstrip('/') + '/'):
+                dst_used = True
+                break
+        if dst_used:
+            break
+    env_refresh = None
+    if dst_used:
+        env_refresh = os.getenv('DST_REFRESH_TV') if is_tv else os.getenv('DST_REFRESH_MOV')
+    else:
+        env_refresh = os.getenv('SYNC_REFRESH_TV') if is_tv else os.getenv('SYNC_REFRESH_MOV')
+    if env_refresh:
+        raw = [p.strip() for p in re.split(r"[,;:]", env_refresh) if p and p.strip() != '']
+        tv_prefix = _select_latest_odc_prefix(client, 'tv')
+        mov_prefix = _select_latest_odc_prefix(client, 'mov')
+        for base in raw:
+            base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
+            if not base.startswith('/'):
+                base = '/' + base
+            base = re.sub(r"/{2,}", "/", base).rstrip('/')
+            path = f"{base}/{name}"
+            if path not in seen:
+                dedup.append(path)
+                seen.add(path)
+    else:
+        if dst_used:
+            base = (tv_src if is_tv else mov_src).strip()
+            if base:
                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
                 path = f"{base}/{name}"
                 if path not in seen:
                     dedup.append(path)
                     seen.add(path)
-        else:
-            # 默认回退逻辑
-            if is_tv:
-                for p in dsts:
-                    m = re.search(r"/ODC/(tv\d+)/电视剧/", p)
-                    if m:
-                        odc_prefix = m.group(1)
-                        break
-                if odc_prefix is None:
-                    odc_prefix = _select_latest_odc_prefix(client, 'tv')
-                for base in [f"/115/videos/{category}", f"/ODC/{odc_prefix}/{category}"]:
-                    path = f"{base}/{name}"
-                    if path not in seen:
-                        dedup.append(path)
-                        seen.add(path)
-            else:
-                for p in dsts:
-                    m = re.search(r"/ODC/(mov\d+)/电影/", p)
-                    if m:
-                        odc_prefix = m.group(1)
-                        break
-                if odc_prefix is None:
-                    odc_prefix = _select_latest_odc_prefix(client, 'mov')
-                for base in [f"/115/videos/{category}", f"/ODC/{odc_prefix}/{category}"]:
-                    path = f"{base}/{name}"
-                    if path not in seen:
-                        dedup.append(path)
-                        seen.add(path)
-        base_paths = dedup
+    base_paths = dedup
     if not base_paths:
         return
     # 解析 Season 并刷新

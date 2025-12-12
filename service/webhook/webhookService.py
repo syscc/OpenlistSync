@@ -106,9 +106,8 @@ def handleWebhook(req):
                             return False
                         return bool(re.search(r"\bS\d{1,2}\b", s, re.I) or re.search(r"\bE\d{1,3}\b", s, re.I) or re.search(r"E\d{1,3}-E?\d{1,3}", s, re.I))
                     tv_flag = _is_tv(title) or _is_tv(text)
-                    category = '电视剧' if tv_flag else '电影'
-                    tv_src = os.getenv('TVsource') or '/media/电视剧'
-                    mov_src = os.getenv('MOVsource') or '/media/电影'
+                    tv_src = os.getenv('TVsource') or ''
+                    mov_src = os.getenv('MOVsource') or ''
                     media_root = tv_src if tv_flag else mov_src
                     has_src = False
                     if client is not None:
@@ -157,7 +156,7 @@ def handleWebhook(req):
                             return f"{prefix}1"
                     odc_prefix = _pick('tv' if tv_flag else 'mov')
                     srcPath = f"{media_root.rstrip('/')}/{remark}/"
-                    dst_env = os.getenv('dst_TV_TARGETS') if tv_flag else os.getenv('dst_MOV_TARGETS')
+                    dst_env = os.getenv('DST_TV_TARGETS') if tv_flag else os.getenv('DST_MOV_TARGETS')
                     dsts = []
                     if dst_env and client is not None:
                         try:
@@ -189,10 +188,17 @@ def handleWebhook(req):
                                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
                                 dsts.append(f"{base}/{remark}/")
                         else:
-                            dsts = [
-                                f"/115/videos/{category}/{remark}/",
-                                f"/ODC/{odc_prefix}/{category}/{remark}/"
-                            ]
+                            try:
+                                notify_list = notifyService.getNotifyList(True)
+                                if notify_list:
+                                    for n in notify_list:
+                                        try:
+                                            notifyService.sendNotify(n, 'Webhook已收到，但未配置同步集合', '请设置 DST_* 或 SYNC_* 环境变量', False)
+                                        except Exception:
+                                            pass
+                            except Exception:
+                                pass
+                            return
                     from service.syncJob import jobService
                     payload = {
                         'enable': 1,

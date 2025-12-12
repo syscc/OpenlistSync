@@ -11,13 +11,13 @@ services:
       - WEBHOOK_DELAY=60             # Webhook延迟触发秒数
       - TVsource=/media/电视剧        # 电视剧源根目录
       - MOVsource=/media/电影        # 电影源根目录
-      - dst_TV_TARGETS=/shanct/电视剧 # 优先同步电视剧到此集合，存在同名目录时仅同步到这里；支持 ,;: 分隔多路径
-      - dst_MOV_TARGETS=/shanct/电影  # 优先同步电影到此集合；支持 ,;: 分隔多路径
-      - dst_REFRESH_TV=/shanct/电视剧,/videos/电视剧 # 优先刷新电视剧目录集合；支持 ,;: 分隔
-      - dst_REFRESH_MOV=/shanct/电影,/videos/电影    # 优先刷新电影目录集合；支持 ,;: 分隔
+      - DST_TV_TARGETS=/shanct/电视剧 # 优先同步电视剧到此集合，存在同名目录时仅同步到这里；支持 ,;: 分隔多路径
+      - DST_MOV_TARGETS=/shanct/电影  # 优先同步电影到此集合；支持 ,;: 分隔多路径
+      - DST_REFRESH_TV=/media/电视剧,/videos/电视剧 # DST 同步时的刷新集合；支持 ,;: 分隔
+      - DST_REFRESH_MOV=/media/电影,/videos/电影    # DST 同步时的刷新集合；支持 ,;: 分隔
       - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧   # 回退电视剧同步集合；{odc_tv} 将解析为 /ODC/tvX
       - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影     # 回退电影同步集合；{odc_mov} 将解析为 /ODC/movX
-      - REFRESH_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧 # 回退电视剧刷新集合
-      - REFRESH_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影   # 回退电影刷新集合
+      - SYNC_REFRESH_TV=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧 # SYNC 同步时的刷新集合
+      - SYNC_REFRESH_MOV=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影   # SYNC 同步时的刷新集合
     volumes:
       - ./data:/app/data
