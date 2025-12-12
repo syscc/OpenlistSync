@@ -156,7 +156,7 @@ services:
       - REFRESH_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧
       - REFRESH_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影
     volumes:
-      - ./:/app/data
+      - ./data:/app/data
 ```
 
 ### 再使用

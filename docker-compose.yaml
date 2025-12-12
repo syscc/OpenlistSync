@@ -11,10 +11,10 @@ services:
       - dst=/shanct
       - TVsource=/media/电视剧
       - MOVsource=/media/电影
-      - WEBHOOK_DELAY=3
-      - SYNC_TV_TARGETS=/115/videos,/ODC/{odc_tv}
-      - SYNC_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
-      - REFRESH_TV_TARGETS=/115/videos,/ODC/{odc_tv},/videos
-      - REFRESH_MOV_TARGETS=/115/videos,/ODC/{odc_mov},/videos
+      - WEBHOOK_DELAY=60
+      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧
+      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影
+      - REFRESH_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧
+      - REFRESH_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影 
     volumes:
       - ./data:/app/data
