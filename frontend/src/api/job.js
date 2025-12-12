@@ -26,6 +26,21 @@ export function alistGetPath(alistId, path) {
 	})
 }
 
+// alist新建文件夹
+export function alistMkdir(data) {
+	return request({
+		url: '/alist',
+		headers: {
+			isMask: false
+		},
+		method: 'post',
+		data: {
+			...data,
+			action: 'mkdir'
+		}
+	})
+}
+
 // alist新增
 export function alistPost(data) {
 	return request({

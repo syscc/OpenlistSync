@@ -7,6 +7,7 @@
 			</el-tree>
 			<span slot="footer" class="dialog-footer">
 				<el-button @click="closeShow">取 消</el-button>
+				<el-button type="success" plain @click="mkdir" :disabled="cuPath == null">新建文件夹</el-button>
 				<el-button type="primary" @click="submit" :loading="submitLoading"
 					:disabled="cuPath == null">{{cuPath == null ? '请先选择路径' : '确 定'}}</el-button>
 			</span>
@@ -16,7 +17,8 @@
 
 <script>
 	import {
-		alistGetPath
+		alistGetPath,
+		alistMkdir
 	} from "@/api/job";
 	export default {
 		name: 'PathSelect',
@@ -33,6 +35,7 @@
 				pathLoading: false,
 				submitLoading: false,
 				cuPath: null,
+				cuNode: null,
 				props: {
 					label: 'path',
 					children: 'child',
@@ -69,6 +72,7 @@
 			closeShow() {
 				this.dialogShow = false;
 				this.cuPath = null;
+				this.cuNode = null;
 			},
 			nodeClick(dt, node, se) {
 				let path = '/';
@@ -78,6 +82,33 @@
 					cup = cup.parent;
 				}
 				this.cuPath = path;
+				this.cuNode = node;
+			},
+			mkdir() {
+				this.$prompt('请输入文件夹名称', '新建文件夹', {
+					confirmButtonText: '确定',
+					cancelButtonText: '取消',
+					inputPattern: /^[^/\\:*?"<>|]+$/,
+					inputErrorMessage: '文件夹名称格式不正确'
+				}).then(async ({
+					value
+				}) => {
+					this.submitLoading = true;
+					try {
+						await alistMkdir({
+							id: this.alistId,
+							path: this.cuPath + value
+						});
+						this.$message.success('创建成功');
+						if (this.cuNode) {
+							this.cuNode.loaded = false;
+							this.cuNode.expand();
+						}
+					} catch (e) {
+						console.error(e)
+					}
+					this.submitLoading = false;
+				}).catch(() => {});
 			},
 			submit() {
 				this.$emit('submit', this.cuPath);

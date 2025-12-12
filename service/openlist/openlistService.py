@@ -78,3 +78,8 @@ def removeClient(openlistId):
 def getChildPath(openlistId, path):
     client = getClientById(openlistId)
     return client.filePathList(path)
+
+
+def mkdir(openlistId, path):
+    client = getClientById(openlistId)
+    return client.mkdir(path)

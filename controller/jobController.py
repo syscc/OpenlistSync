@@ -24,6 +24,8 @@ class OpenList(BaseHandler):
     @run_on_executor
     @handle_request
     def post(self, req):
+        if 'action' in req and req['action'] == 'mkdir':
+            return openlistService.mkdir(req['id'], req['path'])
         openlistService.addClient(req)
 
     @run_on_executor
