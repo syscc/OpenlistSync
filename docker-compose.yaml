@@ -8,10 +8,10 @@ services:
       - "8023:8023"
     user: '1000:1001'
     environment:
+      - WEBHOOK_DELAY=60
       - dst=/shanct/电视剧
       - TVsource=/media/电视剧
       - MOVsource=/media/电影
-      - WEBHOOK_DELAY=60
       - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧
       - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影
       - REFRESH_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧
