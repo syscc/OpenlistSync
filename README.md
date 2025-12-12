@@ -227,36 +227,16 @@ task_timeout=72
 |---|---|---|
 | `TVsource` | 电视剧源根 | `/media/电视剧` |
 | `MOVsource` | 电影源根 | `/media/电影` |
-| `dst` | 优先目标根（请包含分类），存在同名目录时仅同步到这里 | `/shanct/电视剧` 或 `/shanct/电影` |
-| `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{odc_tv}` | `/115/videos/电视剧,/ODC/{odc_tv}/电视剧` |
-| `SYNC_MOV_TARGETS` | 电影同步目标根集合，支持 `{odc_mov}` | `/115/videos/电影,/ODC/{odc_mov}/电影` |
-| `REFRESH_TV_TARGETS` | 电视剧完成后刷新根集合，自动刷新 `.../Season X` | `/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧` |
-| `REFRESH_MOV_TARGETS` | 电影完成后刷新根集合，自动刷新到 `.../名称/` | `/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影` |
+| `dst` | 优先目标根（原样使用），存在同名目录时仅同步到这里；仅在末尾追加“名称(年份)” | 例如 `/shanct/电视剧` 或 `/shanct/tv` |
+| `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{odc_tv}`；仅在末尾追加“名称(年份)” | 例如 `/115/videos/电视剧,/ODC/{odc_tv}/电视剧` 或 `/115/videos/tv,/ODC/{odc_tv}/tv` |
+| `SYNC_MOV_TARGETS` | 电影同步目标根集合，支持 `{odc_mov}`；仅在末尾追加“名称(年份)” | 例如 `/115/videos/电影,/ODC/{odc_mov}/电影` 或 `/115/videos/mov,/ODC/{odc_mov}/mov` |
+| `REFRESH_TV_TARGETS` | 电视剧完成后刷新根集合（仅在末尾追加“名称(年份)”），自动解析最大季 | 例如 `/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧` 或 `/115/videos/tv,/ODC/{odc_tv}/tv,/videos/tv` |
+| `REFRESH_MOV_TARGETS` | 电影完成后刷新根集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影` 或 `/115/videos/mov,/ODC/{odc_mov}/mov,/videos/mov` |
 
 - 占位符说明：`{odc_tv}`/`{odc_mov}` 会替换为 `/ODC/tvX` 或 `/ODC/movX` 的最大值（扫描 `/ODC` 选择当前最大序号）。
 - 源存在判定：`TVsource` 或 `MOVsource` 下存在 `名称(年份)` 目录才会创建作业。
 
-### Docker Compose 示例
 
-```yaml
-services:
-  openlistsync:
-    image: syscc/openlistsync:latest
-    container_name: openlistsync
-    restart: always
-    ports:
-      - "8023:8023"
-    volumes:
-      - /opt/data:/app/data
-    environment:
-      - TVsource=/media/电视剧
-      - MOVsource=/media/电影
-      - dst=/shanct
-      - SYNC_TV_TARGETS=/115/videos,/ODC/{odc_tv}
-      - SYNC_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
-      - REFRESH_TV_TARGETS=/115/videos,/ODC/{odc_tv},/videos
-      - REFRESH_MOV_TARGETS=/115/videos,/ODC/{odc_mov}
-```
 
 ## 接口概览
 

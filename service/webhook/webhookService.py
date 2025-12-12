@@ -162,8 +162,6 @@ def handleWebhook(req):
                     if dst_env and client is not None:
                         try:
                             dst_root = dst_env.rstrip('/')
-                            if re.search(r"/(电影|电视剧)(/|$)", dst_root) is None:
-                                dst_root = f"{dst_root}/{category}"
                             exists_dirs = client.filePathList(dst_root)
                             names = [d['path'] for d in exists_dirs]
                             if remark in names:
@@ -181,8 +179,6 @@ def handleWebhook(req):
                                 if not base.startswith('/'):
                                     base = '/' + base
                                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
-                                if re.search(r"/(电影|电视剧)(/|$)", base) is None:
-                                    base = f"{base}/{category}"
                                 dsts.append(f"{base}/{remark}/")
                         else:
                             dsts = [

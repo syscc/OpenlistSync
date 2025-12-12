@@ -97,8 +97,6 @@ def refresh_after_task(job, status):
                 if not base.startswith('/'):
                     base = '/' + base
                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
-                if re.search(r"/(电影|电视剧)(/|$)", base) is None:
-                    base = f"{base}/{category}"
                 path = f"{base}/{name}"
                 if path not in seen:
                     dedup.append(path)
