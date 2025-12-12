@@ -430,6 +430,19 @@ class JobTask:
                           isPath=1)
             raise e
 
+    def ensurePath(self, path):
+        if self.breakFlag:
+            return
+        scanInterval = self.job['scanIntervalT']
+        segs = [s for s in path.split('/') if s]
+        cur = '/'
+        for s in segs:
+            cur = cur + s + '/'
+            try:
+                self.alistClient.fileListApi(cur, 0, scanInterval, None, cur)
+            except Exception:
+                self.alistClient.mkdir(cur, scanInterval)
+
     def syncWithHave(self, srcPath, dstPath, spec, srcRootPath, dstRootPath, firstDst):
         """
         扫描并同步-目标目录存在目录（意味着要继续扫描目标目录）
@@ -445,9 +458,12 @@ class JobTask:
             return
         try:
             srcFiles = self.listDir(srcPath, firstDst, spec, srcRootPath)
-            dstFiles = self.listDir(dstPath, firstDst, spec, dstRootPath, False)
+            try:
+                dstFiles = self.listDir(dstPath, firstDst, spec, dstRootPath, False)
+            except Exception:
+                self.syncWithOutHave(srcPath, dstPath, spec, srcRootPath, dstRootPath, firstDst)
+                return
         except Exception:
-            # 已在listDir做出日志打印等操作，此处啥都不用做
             return
         for key in srcFiles.keys():
             # 如果是文件
@@ -486,7 +502,7 @@ class JobTask:
         status = 2
         errMsg = None
         try:
-            self.alistClient.mkdir(dstPath, self.job['scanIntervalT'])
+            self.ensurePath(dstPath)
         except Exception as e:
             status = 7
             errMsg = str(e)
