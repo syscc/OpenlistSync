@@ -148,6 +148,7 @@ services:
       - "8023:8023"
     user: "1000:1001"
     environment:
+      - WEBHOOK_DELAY=60
       - dst=/shanct/电视剧
       - TVsource=/media/电视剧
       - MOVsource=/media/电影
