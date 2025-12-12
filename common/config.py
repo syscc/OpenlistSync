@@ -33,25 +33,35 @@ def getConfig():
         }
         if os.path.exists('data/config.ini'):
             try:
-                cfg = configparser.ConfigParser()
+                cfg = configparser.ConfigParser(inline_comment_prefixes=(';', '#'))
+                cfg.optionxform = lambda option: option
                 cfg.read('data/config.ini', encoding='utf8')
-                tao = cfg['tao']
-                for keyItem in sCfg.keys():
-                    if keyItem in tao:
-                        sCfg[keyItem] = int(tao[keyItem])
+                
+                # 读取 OpenlistSync
+                section_name = 'OpenlistSync'
+
+                if section_name in cfg:
+                    section_data = cfg[section_name]
+                    for key in section_data:
+                        val = str(section_data[key]).strip()
+                        key_lower = key.lower()
+                        if key_lower in sCfg:
+                            sCfg[key_lower] = int(val)
+                        else:
+                            os.environ[key] = val
             except Exception as e:
                 logger = logging.getLogger()
                 logger.error(f"配置文件读取失败，将使用默认配置_/_config.ini read error: {e}")
                 logger.exception(e)
         else:
             try:
-                sCfg['port'] = int(os.getenv('OPENLIST_PORT', 8023))
-                sCfg['expires'] = int(os.getenv('OPENLIST_EXPIRES', 2))
-                sCfg['log_level'] = int(os.getenv('OPENLIST_LOG_LEVEL', 1))
-                sCfg['console_level'] = int(os.getenv('OPENLIST_CONSOLE_LEVEL', 2))
-                sCfg['log_save'] = int(os.getenv('OPENLIST_LOG_SAVE', 7))
-                sCfg['task_save'] = int(os.getenv('OPENLIST_TASK_SAVE', 0))
-                sCfg['timeout'] = int(os.getenv('OPENLIST_TASK_TIMEOUT', 72))
+                sCfg['port'] = int(os.getenv('OPENLISTSYNC_PORT', 8023))
+                sCfg['expires'] = int(os.getenv('OPENLISTSYNC_EXPIRES', 2))
+                sCfg['log_level'] = int(os.getenv('OPENLISTSYNC_LOG_LEVEL', 1))
+                sCfg['console_level'] = int(os.getenv('OPENLISTSYNC_CONSOLE_LEVEL', 2))
+                sCfg['log_save'] = int(os.getenv('OPENLISTSYNC_LOG_SAVE', 7))
+                sCfg['task_save'] = int(os.getenv('OPENLISTSYNC_TASK_SAVE', 0))
+                sCfg['timeout'] = int(os.getenv('OPENLISTSYNC_TASK_TIMEOUT', 72))
             except Exception as e:
                 logger = logging.getLogger()
                 logger.error(f"环境变量读取失败，将使用默认配置_/_ENV read error: {e}")

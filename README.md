@@ -30,7 +30,7 @@
 
 本程序改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync)。
 
-在原有的项目基础上主要改动，通过MoviePilot入库通知自动同步下载的影视文件到OpenList；并刷新，利用openlist的 `Strm` 驱动自动更新 Strm文件自动入库
+在原有的项目基础上主要改动，通过 [MoviePilot](https://github.com/jxxghp/MoviePilot) 入库通知自动同步下载的影视文件到 [OpenList](https://github.com/OpenListTeam/OpenList)；并刷新，利用 [OpenList](https://github.com/OpenListTeam/OpenList) 的 `Strm` 驱动自动更新 Strm 文件自动入库。
 
 **如果好用，请 Star！非常感谢！**  [GitHub](https://github.com/syscc/OpenlistSync)  [DockerHub](https://hub.docker.com/r/syscc/openlistsync)
 
@@ -148,13 +148,14 @@ services:
       - "8023:8023"
     user: "1000:1001"
     environment:
-      - WEBHOOK_DELAY=60             # Webhook延迟触发秒数
+      - WEBHOOK_DELAY=60 # Webhook延迟触发秒数 取决是否需要等MoviePilot刮削完成后同步，如果不需要可以设置为3
       - TVsource=/media/电视剧        # 电视剧源根目录
       - MOVsource=/media/电影        # 电影源根目录
-      - DST_TV_TARGETS=/shanct/电视剧 # 优先同步电视剧到此集合；支持 ,;: 分隔
-      - DST_MOV_TARGETS=/shanct/电影  # 优先同步电影到此集合；支持 ,;: 分隔
-      - DST_REFRESH_TV=/media/电视剧,/videos/电视剧 # DST 同步时的刷新集合；支持 ,;: 分隔
-      - DST_REFRESH_MOV=/media/电影,/videos/电影    # DST 同步时的刷新集合；支持 ,;: 分隔
+      # DST开头变量适用于临时存放（如追新电视剧），整季完结后可删除并同步至SYNC路径，非必要不需要启用！
+      # - DST_TV_TARGETS=/shanct/电视剧 # 优先同步电视剧到此集合；支持 ,;: 分隔
+      # - DST_MOV_TARGETS=/shanct/电影  # 优先同步电影到此集合；支持 ,;: 分隔
+      # - DST_REFRESH_TV=/media/电视剧,/videos/电视剧 # DST 同步时的刷新集合；支持 ,;: 分隔
+      # - DST_REFRESH_MOV=/media/电影,/videos/电影    # DST 同步时的刷新集合；支持 ,;: 分隔
       - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧   # 回退电视剧同步集合；{odc_tv} → /ODC/tvX
       - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影     # 回退电影同步集合；{odc_mov} → /ODC/movX
       - SYNC_REFRESH_TV=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧 # SYNC 同步时的刷新集合
@@ -184,7 +185,7 @@ services:
 `data/config.ini`文件示例（如该文件存在，则**优先级最高**）
 
 ```ini
-[tao]
+[OpenlistSync]
 # 运行端口号
 port=8023
 # 登录有效期，单位天
@@ -205,13 +206,13 @@ task_timeout=72
 
 | config.ini    | Docker环境变量    | 描述                                                         | 默认值           |
 | ------------- | ----------------- | ------------------------------------------------------------ |---------------|
-| port          | TAO_PORT          | 运行端口号                                                   | 8023          |
-| expires       | TAO_EXPIRES       | 登录有效期，单位天                                           | 2             |
-| log_level     | TAO_LOG_LEVEL     | 日志等级：0-DEBUG，1-INFO，2-WARNING，3-ERROR，4-CRITICAL；数值越大，产生的日志越少，推荐1或2 | 1             |
-| console_level | TAO_CONSOLE_LEVEL | 控制台日志等级：适用于v0.2.3及之后版本；与上同               | 2             |
-| log_save      | TAO_LOG_SAVE      | 系统日志保留天数，该天数之前的日志会自动清理，单位天，0表示不自动清理 | 7             |
-| task_save     | TAO_TASK_SAVE     | 任务记录保留天数，该天数之前的记录会自动清理，单位天，0表示不自动清理 | 0             |
-| task_timeout  | TAO_TASK_TIMEOUT  | 任务执行超时时间，单位小时。一定要设置长一点，以免要备份的东西太多 | 72            |
+| port          | OPENLISTSYNC_PORT     | 运行端口号                                                   | 8023          |
+| expires       | OPENLISTSYNC_EXPIRES  | 登录有效期，单位天                                           | 2             |
+| log_level     | OPENLISTSYNC_LOG_LEVEL | 日志等级：0-DEBUG，1-INFO，2-WARNING，3-ERROR，4-CRITICAL；数值越大，产生的日志越少，推荐1或2 | 1             |
+| console_level | OPENLISTSYNC_CONSOLE_LEVEL | 控制台日志等级：适用于v0.2.3及之后版本；与上同               | 2             |
+| log_save      | OPENLISTSYNC_LOG_SAVE | 系统日志保留天数，该天数之前的日志会自动清理，单位天，0表示不自动清理 | 7             |
+| task_save     | OPENLISTSYNC_TASK_SAVE | 任务记录保留天数，该天数之前的记录会自动清理，单位天，0表示不自动清理 | 0             |
+| task_timeout  | OPENLISTSYNC_TASK_TIMEOUT | 任务执行超时时间，单位小时。一定要设置长一点，以免要备份的东西太多 | 72            |
 | -             | TZ                | 时区                                                         | Asia/Shanghai |
 
 </details>
