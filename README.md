@@ -216,4 +216,4 @@ task_timeout=72
 
 ## Star随时间
 
-[![Stargazers over time](https://starchart.cc/syscc/OpenlistSync.svg)](https://starchart.cc/syscc/OpenlistSync)
+[![Stargazers over time](https://starchart.cc/syscc/OpenlistSync.svg?variant=adaptive)](https://starchart.cc/syscc/OpenlistSync)
