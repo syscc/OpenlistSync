@@ -12,7 +12,7 @@ export function alistGet() {
 }
 
 // alist子目录
-export function alistGetPath(alistId, path) {
+export function alistGetPath(openlistId, path) {
 	return request({
 		url: '/alist',
 		headers: {
@@ -20,7 +20,7 @@ export function alistGetPath(alistId, path) {
 		},
 		method: 'get',
 		params: {
-			alistId,
+			openlistId,
 			path
 		}
 	})

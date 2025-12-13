@@ -17,8 +17,8 @@ class OpenList(BaseHandler):
     @run_on_executor
     @handle_request
     def get(self, req):
-        if 'alistId' in req and 'path' in req:
-            return openlistService.getChildPath(int(req['alistId']), req['path'])
+        if 'openlistId' in req and 'path' in req:
+            return openlistService.getChildPath(int(req['openlistId']), req['path'])
         return openlistService.getClientList()
 
     @run_on_executor

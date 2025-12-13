@@ -56,8 +56,8 @@
 					this.pathLoading = false;
 					return res.data;
 				} catch (err) {
-					return [];
 					this.pathLoading = false;
+					return [];
 				}
 			},
 			async loadNode(node, resolve) {
