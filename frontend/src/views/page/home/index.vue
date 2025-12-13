@@ -3,14 +3,14 @@
 		<div class="top-box">
 			<div class="top-box-left">
 				<el-button type="success" icon="el-icon-plus" @click="addShow" size="small">新建作业</el-button>
-				<el-button @click="runAllJob" size="small" v-if="jobData.dataList.length > 1" icon="el-icon-caret-right"
+				<el-button @click="runAllJob" size="small" v-if="jobData.jobList.length > 1" icon="el-icon-caret-right"
 					:loading="btnLoading" type="primary">执行全部</el-button>
 			</div>
 			<div class="top-box-title">作业管理</div>
 			<menuRefresh :autoRefresh="false" :freshInterval="5273" :loading="loading" @getData="getJobList">
 			</menuRefresh>
 		</div>
-		<el-table :data="jobData.dataList" class="table-data" height="calc(100% - 117px)" v-loading="loading">
+		<el-table :data="jobData.jobList" class="table-data" height="calc(100% - 117px)" v-loading="loading">
 			<el-table-column type="expand">
 				<template slot-scope="props">
 					<div class="form-box">
@@ -354,8 +354,8 @@
 		data() {
 			return {
 				jobData: {
-					dataList: [],
-					conut: 0
+					jobList: [],
+					count: 0
 				},
 				params: {
 					pageSize: 10,
@@ -468,7 +468,10 @@
 				this.loading = true;
 				jobGetJob(this.params).then(res => {
 					this.loading = false;
-					this.jobData = res.data;
+					this.jobData = {
+						jobList: res.data.jobList,
+						count: res.data.count
+					};
 				}).catch(err => {
 					this.loading = false;
 				})

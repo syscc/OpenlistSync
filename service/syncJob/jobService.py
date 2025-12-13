@@ -190,7 +190,9 @@ def getJobList(req):
     }
     :return:
     """
-    return jobMapper.getJobList(req)
+    res = jobMapper.getJobList(req)
+    res['jobList'] = res.pop('dataList')
+    return res
 
 
 def getJobCurrent(jobId, status=None):
