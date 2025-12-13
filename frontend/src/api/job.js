@@ -1,9 +1,9 @@
 import request from '@/utils/request'
 
-// alist列表
+// openlist列表
 export function openlistGet() {
 	return request({
-		url: '/alist',
+		url: '/openlist',
 		headers: {
 			isMask: false
 		},
@@ -11,10 +11,10 @@ export function openlistGet() {
 	})
 }
 
-// alist子目录
+// openlist子目录
 export function openlistGetPath(openlistId, path) {
 	return request({
-		url: '/alist',
+		url: '/openlist',
 		headers: {
 			isMask: false
 		},
@@ -26,10 +26,10 @@ export function openlistGetPath(openlistId, path) {
 	})
 }
 
-// alist新建文件夹
+// openlist新建文件夹
 export function openlistMkdir(data) {
 	return request({
-		url: '/alist',
+		url: '/openlist',
 		headers: {
 			isMask: false
 		},
@@ -41,10 +41,10 @@ export function openlistMkdir(data) {
 	})
 }
 
-// alist新增
+// openlist新增
 export function openlistPost(data) {
 	return request({
-		url: '/alist',
+		url: '/openlist',
 		headers: {
 			isMask: false
 		},
@@ -53,10 +53,10 @@ export function openlistPost(data) {
 	})
 }
 
-// alist修改
+// openlist修改
 export function openlistPut(data) {
 	return request({
-		url: '/alist',
+		url: '/openlist',
 		headers: {
 			isMask: false
 		},
@@ -65,10 +65,10 @@ export function openlistPut(data) {
 	})
 }
 
-// 删除alist
+// 删除openlist
 export function openlistDelete(id) {
 	return request({
-		url: '/alist',
+		url: '/openlist',
 		headers: {
 			isMask: false
 		},

@@ -111,13 +111,13 @@
 		computed: {
 			toTable() {
 				const count = this.cuTaskList.length;
-				let dataList = [];
+				let taskItemList = [];
 				if (count != 0) {
 					const startIndex = (this.toTableParams.pageNum - 1) * this.toTableParams.pageSize;
-					dataList = this.cuTaskList.slice(startIndex, startIndex + this.toTableParams.pageSize);
+					taskItemList = this.cuTaskList.slice(startIndex, startIndex + this.toTableParams.pageSize);
 				}
 				return {
-					dataList,
+					taskItemList,
 					count
 				}
 			}

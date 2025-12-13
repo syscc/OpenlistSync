@@ -26,7 +26,6 @@ def make_app():
         (r"/svr/user", systemController.User),
         (r"/svr/language", systemController.Language),
         (r"/svr/openlist", jobController.OpenList),
-        (r"/svr/alist", jobController.OpenList),
         (r"/svr/job", jobController.Job),
         (r"/svr/notify", notifyController.Notify),
         (r"/webhook", webhookController.Webhook),

@@ -61,7 +61,7 @@ def addClient(openlist):
         client.updateOpenListId(openlistId)
     except Exception as e:
         logger = logging.getLogger()
-        logger.error(G('add_alist_client_fail').format(str(e)))
+        logger.error(G('add_openlist_client_fail').format(str(e)))
         raise Exception(e)
     else:
         global openlistClientList

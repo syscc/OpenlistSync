@@ -44,12 +44,12 @@ class OpenListClient:
             if 'Invalid URL' in str(e):
                 raise Exception(G('address_incorrect'))
             elif 'Max retries' in str(e):
-                raise Exception(G('alist_connect_fail'))
+                raise Exception(G('openlist_connect_fail'))
             raise Exception(e)
         if res['code'] != 200:
             if res['code'] == 401:
-                raise Exception(G('alist_un_auth'))
-            raise Exception(G('alist_fail_code_reason').format(res['code'], res['message']))
+                raise Exception(G('openlist_un_auth'))
+            raise Exception(G('openlist_fail_code_reason').format(res['code'], res['message']))
         return res['data']
 
     def post(self, url, data=None, params=None):

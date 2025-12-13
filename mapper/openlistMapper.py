@@ -15,7 +15,7 @@ def getOpenlistById(openlistId):
     if rst:
         return rst[0]
     else:
-        raise Exception(G('alist_not_found'))
+        raise Exception(G('openlist_not_found'))
 
 
 def addOpenlist(openlist):
