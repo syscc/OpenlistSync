@@ -68,12 +68,12 @@
 					this.loading = true;
 					jobGetTaskItem(this.params).then(res => {
 						this.loading = false;
-						res.data.dataList.forEach(item => {
+						res.data.taskItemList.forEach(item => {
 							item.progress = parseInt(item.progress);
 							item.progress = item.progress < 100 ? item.progress : 100;
 						})
 						this.taskItemData = {
-							taskItemList: res.data.dataList,
+							taskItemList: res.data.taskItemList,
 							count: res.data.count
 						};
 					}).catch(err => {

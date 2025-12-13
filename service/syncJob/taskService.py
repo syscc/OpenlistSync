@@ -139,4 +139,6 @@ def getTaskItemList(req):
     }
     :return:
     """
-    return jobMapper.getJobTaskItemList(req)
+    res = jobMapper.getJobTaskItemList(req)
+    res['taskItemList'] = res.pop('dataList')
+    return res
