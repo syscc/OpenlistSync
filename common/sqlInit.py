@@ -139,19 +139,7 @@ def init_sql(conn):
                 cursor.execute("update job set scanIntervalT = 10, useCacheT = 0 where useCacheT = 2")
             if sqlVersion < 250609:
                 try:
-                    cursor.execute("alter table alist_list rename to list")
-                except Exception:
-                    pass
-                try:
                     cursor.execute("alter table openlist_list rename to list")
-                except Exception:
-                    pass
-                try:
-                    cursor.execute("alter table job rename column alistId to openlistId")
-                except Exception:
-                    pass
-                try:
-                    cursor.execute("alter table job_task_item rename column alistTaskId to openlistTaskId")
                 except Exception:
                     pass
             cursor.execute(f"update user_list set sqlVersion={cuVersion}")
