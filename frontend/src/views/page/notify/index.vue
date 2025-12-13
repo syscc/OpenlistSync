@@ -2,7 +2,7 @@
 	<div class="notify">
 		<div class="loading-box content-none-data" v-loading="true" v-if="loading">加载中</div>
 		<div v-else class="card-box">
-			<div class="card-item" v-for="item in dataList">
+			<div class="card-item" v-for="item in notifyList">
 				<div class="card-item-top">
 					<el-image :src="`/notify/${item.method}.png`" fit="contain" style="width: 60px;height: 60px;"></el-image>
 					<div style="margin-left: 12px;">
@@ -22,7 +22,7 @@
 				</div>
 			</div>
 			<div class="card-item card-add" @click="addShow" v-if="!loading">
-				<template v-if="dataList.length == 0">
+				<template v-if="notifyList.length == 0">
 					暂无通知配置，请<span style="color: #409eff;">新增</span>
 				</template>
 				<span v-else>新增</span>
@@ -143,7 +143,7 @@
 		data() {
 			return {
 				notifyMethodLength: notifyMethod.length,
-				dataList: [],
+				notifyList: [],
 				loading: false,
 				deleteLoading: false,
 				editLoading: false,
@@ -220,7 +220,7 @@
 				this.loading = true;
 				getNotifyList().then(res => {
 					this.loading = false;
-					this.dataList = res.data;
+					this.notifyList = res.data;
 				}).catch(err => {
 					this.loading = false;
 				})
