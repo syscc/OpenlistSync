@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 
 // alist列表
-export function alistGet() {
+export function openlistGet() {
 	return request({
 		url: '/alist',
 		headers: {
@@ -12,7 +12,7 @@ export function alistGet() {
 }
 
 // alist子目录
-export function alistGetPath(openlistId, path) {
+export function openlistGetPath(openlistId, path) {
 	return request({
 		url: '/alist',
 		headers: {
@@ -27,7 +27,7 @@ export function alistGetPath(openlistId, path) {
 }
 
 // alist新建文件夹
-export function alistMkdir(data) {
+export function openlistMkdir(data) {
 	return request({
 		url: '/alist',
 		headers: {
@@ -42,7 +42,7 @@ export function alistMkdir(data) {
 }
 
 // alist新增
-export function alistPost(data) {
+export function openlistPost(data) {
 	return request({
 		url: '/alist',
 		headers: {
@@ -54,7 +54,7 @@ export function alistPost(data) {
 }
 
 // alist修改
-export function alistPut(data) {
+export function openlistPut(data) {
 	return request({
 		url: '/alist',
 		headers: {
@@ -66,7 +66,7 @@ export function alistPut(data) {
 }
 
 // 删除alist
-export function alistDelete(id) {
+export function openlistDelete(id) {
 	return request({
 		url: '/alist',
 		headers: {

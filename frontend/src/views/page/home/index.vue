@@ -331,7 +331,7 @@
 				<el-button type="primary" @click="submitDisable" :loading="editLoading">确 定</el-button>
 			</span>
 		</el-dialog>
-		<pathSelect v-if="editData" :alistId="editData.alistId" ref="pathSelect" @submit="submitPath"></pathSelect>
+		<pathSelect v-if="editData" :openlistId="editData.alistId" ref="pathSelect" @submit="submitPath"></pathSelect>
 	</div>
 </template>
 
@@ -341,7 +341,7 @@
 		jobPut,
 		jobDelete,
 		jobPost,
-		alistGet
+		openlistGet
 	} from "@/api/job";
 	import pathSelect from './components/pathSelect.vue';
 	import menuRefresh from './components/menuRefresh';
@@ -478,7 +478,7 @@
 				this.$refs.pathSelect.show();
 			},
 			getAlistList() {
-				alistGet().then(res => {
+				openlistGet().then(res => {
 					this.alistList = res.data;
 				})
 			},

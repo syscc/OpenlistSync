@@ -17,14 +17,14 @@
 
 <script>
 	import {
-		alistGetPath,
-		alistMkdir
+		openlistGetPath,
+		openlistMkdir
 	} from "@/api/job";
 	export default {
 		name: 'PathSelect',
 		components: {},
 		props: {
-			alistId: {
+			openlistId: {
 				type: Number,
 				default: null
 			}
@@ -52,7 +52,7 @@
 			async getPath(path) {
 				this.pathLoading = true;
 				try {
-					let res = await alistGetPath(this.alistId, path);
+					let res = await openlistGetPath(this.openlistId, path);
 					this.pathLoading = false;
 					return res.data;
 				} catch (err) {
@@ -95,8 +95,8 @@
 				}) => {
 					this.submitLoading = true;
 					try {
-						await alistMkdir({
-							id: this.alistId,
+						await openlistMkdir({
+							id: this.openlistId,
 							path: this.cuPath + value
 						});
 						this.$message.success('创建成功');

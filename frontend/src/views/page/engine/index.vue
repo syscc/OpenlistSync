@@ -52,10 +52,10 @@
 
 <script>
 	import {
-		alistGet,
-		alistPost,
-		alistPut,
-		alistDelete
+		openlistGet,
+		openlistPost,
+		openlistPut,
+		openlistDelete
 	} from "@/api/job";
 	export default {
 		name: 'Engine',
@@ -97,7 +97,7 @@
 		methods: {
 			getAlistList() {
 				this.getLoading = true;
-				alistGet().then(res => {
+				openlistGet().then(res => {
 					this.getLoading = false;
 					this.alistList = res.data;
 				}).catch(err => {
@@ -130,7 +130,7 @@
 						this.editData.url = this.ensureHttpPrefix(this.editData.url);
 						this.editLoading = true;
 						if (this.editFlag) {
-							alistPut(this.editData).then(res => {
+							openlistPut(this.editData).then(res => {
 								this.editLoading = false;
 								this.$message({
 									message: res.msg,
@@ -142,7 +142,7 @@
 								this.editLoading = false;
 							})
 						} else {
-							alistPost(this.editData).then(res => {
+							openlistPost(this.editData).then(res => {
 								this.editLoading = false;
 								this.$message({
 									message: res.msg,
@@ -164,7 +164,7 @@
 					type: 'warning'
 				}).then(() => {
 					this.deleteLoading = true;
-					alistDelete(alistId).then(res => {
+					openlistDelete(alistId).then(res => {
 						this.deleteLoading = false;
 						this.$message({
 							message: res.msg,
