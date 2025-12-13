@@ -28,7 +28,7 @@
 
 ---
 
-本程序改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync) v0.3.2
+本程序改自开源项目 [TaoSync V0.3.2](https://github.com/dr34m-cn/taosync) 
 
 在原有的项目基础上主要改动，通过 [MoviePilot](https://github.com/jxxghp/MoviePilot) 入库通知自动同步下载的影视文件到 [OpenList](https://github.com/OpenListTeam/OpenList)；并刷新，利用 [OpenList](https://github.com/OpenListTeam/OpenList) 的 `Strm` 驱动自动更新 Strm 文件自动入库。
 
