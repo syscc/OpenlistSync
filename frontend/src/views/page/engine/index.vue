@@ -2,7 +2,7 @@
 	<div class="engine">
 		<div class="loading-box content-none-data" v-loading="true" v-if="getLoading">加载中</div>
 		<div v-else class="card-box">
-			<div class="card-item" v-for="item in alistList">
+			<div class="card-item" v-for="item in openlistList">
 				<div class="card-item-top">
 					<el-image src="/logo/logo.svg" fit="contain" style="width: 60px;height: 60px;"></el-image>
 					<div style="margin-left: 12px;">
@@ -14,11 +14,11 @@
 				</div>
 				<div class="card-item-bottom">
 					<el-button size="small" type="primary" @click="editShowDialog(item)">编辑</el-button>
-					<el-button size="small" type="danger" @click="delAlist(item.id)">删除</el-button>
+					<el-button size="small" type="danger" @click="delOpenlist(item.id)">删除</el-button>
 				</div>
 			</div>
 			<div class="card-item card-add" @click="addShow" v-if="!getLoading">
-				<template v-if="alistList.length == 0">
+				<template v-if="openlistList.length == 0">
 					暂无引擎，请<span style="color: #409eff;">新增</span>
 				</template>
 				<span v-else>新增</span>
@@ -62,7 +62,7 @@
 		components: {},
 		data() {
 			return {
-				alistList: [],
+				openlistList: [],
 				getLoading: false,
 				deleteLoading: false,
 				editLoading: false,
@@ -91,15 +91,15 @@
 			};
 		},
 		created() {
-			this.getAlistList();
+			this.getOpenlistList();
 		},
 		beforeDestroy() {},
 		methods: {
-			getAlistList() {
+			getOpenlistList() {
 				this.getLoading = true;
 				openlistGet().then(res => {
 					this.getLoading = false;
-					this.alistList = res.data;
+					this.openlistList = res.data;
 				}).catch(err => {
 					this.getLoading = false;
 				})
@@ -137,7 +137,7 @@
 									type: 'success'
 								});
 								this.closeShow();
-								this.getAlistList();
+								this.getOpenlistList();
 							}).catch(err => {
 								this.editLoading = false;
 							})
@@ -149,7 +149,7 @@
 									type: 'success'
 								});
 								this.closeShow();
-								this.getAlistList();
+								this.getOpenlistList();
 							}).catch(err => {
 								this.editLoading = false;
 							})
@@ -157,7 +157,7 @@
 					}
 				})
 			},
-			delAlist(alistId) {
+			delOpenlist(alistId) {
 				this.$confirm("操作不可逆，将永久删除该引擎，请确认没有作业使用该引擎，否则会导致错误，仍要删除吗？", '提示', {
 					confirmButtonText: '确定',
 					cancelButtonText: '取消',
@@ -170,7 +170,7 @@
 							message: res.msg,
 							type: 'success'
 						});
-						this.getAlistList();
+						this.getOpenlistList();
 					}).catch(err => {
 						this.deleteLoading = false;
 					})

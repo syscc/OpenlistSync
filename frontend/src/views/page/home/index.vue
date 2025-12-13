@@ -162,7 +162,7 @@
 						<el-form-item prop="openlistId" label="引擎">
 							<el-select v-model="editData.openlistId" placeholder="请选择引擎" class="label_width"
 								no-data-text="暂无引擎,请前往引擎管理创建">
-								<el-option v-for="item in alistList" :label="item.url" :value="item.id">
+								<el-option v-for="item in openlistList" :label="item.url" :value="item.id">
 									<span
 										style="float: left;margin-right: 16px;">{{item.url}}{{item.remark != null ? `[${item.remark}]` : ''}}</span>
 									<span
@@ -361,7 +361,7 @@
 					pageSize: 10,
 					pageNum: 1
 				},
-				alistList: [],
+				openlistList: [],
 				cronList: [{
 					label: 'year',
 					palce: '2024'
@@ -477,9 +477,9 @@
 				this.cuIsSrc = isSrc;
 				this.$refs.pathSelect.show();
 			},
-			getAlistList() {
+			getOpenlistList() {
 				openlistGet().then(res => {
-					this.alistList = res.data;
+					this.openlistList = res.data;
 				})
 			},
 			toCron() {
@@ -522,8 +522,8 @@
 					this.$message.error("禁用作业后才能编辑");
 					return
 				}
-				if (this.alistList.length == 0) {
-					this.getAlistList();
+				if (this.openlistList.length == 0) {
+					this.getOpenlistList();
 				}
 				this.excludeTmp = '';
 				this.editData = JSON.parse(JSON.stringify(row));
@@ -536,8 +536,8 @@
 				this.editShow = true;
 			},
 			addShow() {
-				if (this.alistList.length == 0) {
-					this.getAlistList();
+				if (this.openlistList.length == 0) {
+					this.getOpenlistList();
 				}
 				let editData = {
 					enable: 1,
