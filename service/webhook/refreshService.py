@@ -66,8 +66,8 @@ _recent_refresh = {}
 def refresh_after_task(job, status):
     if status not in [2, 3]:
         return
-    alistId = int(job['alistId'])
-    client = openlistService.getClientById(alistId)
+    openlistId = int(job['openlistId'])
+    client = openlistService.getClientById(openlistId)
     remark = job.get('remark') or ''
     src = job.get('srcPath') or ''
     dsts = (job.get('dstPath') or '').split(':') if job.get('dstPath') else []

@@ -79,10 +79,10 @@ def handleWebhook(req):
                         pass
                 else:
                     from mapper import openlistMapper
-                    alists = openlistMapper.getOpenlistList()
-                    if not alists:
+                    openlists = openlistMapper.getOpenlistList()
+                    if not openlists:
                         return
-                    if not alists:
+                    if not openlists:
                         try:
                             notify_list = notifyService.getNotifyList(True)
                             if notify_list:
@@ -94,7 +94,7 @@ def handleWebhook(req):
                         except Exception:
                             pass
                         return
-                    openlistId = int(alists[0]['id'])
+                    openlistId = int(openlists[0]['id'])
                     from service.openlist import openlistService
                     client = None
                     try:

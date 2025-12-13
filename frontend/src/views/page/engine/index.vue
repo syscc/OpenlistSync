@@ -157,14 +157,14 @@
 					}
 				})
 			},
-			delOpenlist(alistId) {
+			delOpenlist(openlistId) {
 				this.$confirm("操作不可逆，将永久删除该引擎，请确认没有作业使用该引擎，否则会导致错误，仍要删除吗？", '提示', {
 					confirmButtonText: '确定',
 					cancelButtonText: '取消',
 					type: 'warning'
 				}).then(() => {
 					this.deleteLoading = true;
-					openlistDelete(alistId).then(res => {
+					openlistDelete(openlistId).then(res => {
 						this.deleteLoading = false;
 						this.$message({
 							message: res.msg,

@@ -7,11 +7,11 @@ from common.LNG import G
 
 
 def getOpenlistList():
-    return sqlBase.fetchall_to_table("select * from openlist_list")
+    return sqlBase.fetchall_to_table("select * from list")
 
 
 def getOpenlistById(openlistId):
-    rst = sqlBase.fetchall_to_table("select * from openlist_list where id=?", (openlistId,))
+    rst = sqlBase.fetchall_to_table("select * from list where id=?", (openlistId,))
     if rst:
         return rst[0]
     else:
@@ -19,15 +19,15 @@ def getOpenlistById(openlistId):
 
 
 def addOpenlist(openlist):
-    return sqlBase.execute_insert("insert into openlist_list (remark, url, userName, token) "
+    return sqlBase.execute_insert("insert into list (remark, url, userName, token) "
                                   "values (:remark, :url, :userName, :token)", openlist)
 
 
 def updateOpenlist(openlist):
-    sqlBase.execute_update(f"update openlist_list set remark=:remark, url=:url"
+    sqlBase.execute_update(f"update list set remark=:remark, url=:url"
                            f"{', token=:token' if 'token' in openlist else ''}"
                            f" where id=:id", openlist)
 
 
 def removeOpenlist(openlistId):
-    sqlBase.execute_update("delete from openlist_list where id=?", (openlistId,))
+    sqlBase.execute_update("delete from list where id=?", (openlistId,))

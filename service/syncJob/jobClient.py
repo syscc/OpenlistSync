@@ -313,7 +313,7 @@ class JobTask:
             'fileName': name,
             'fileSize': size,
             'type': copyType,
-            'alistTaskId': openlistTaskId,
+            'openlistTaskId': openlistTaskId,
             'status': status,
             'errMsg': errMsg,
             'createTime': createTime
@@ -338,7 +338,7 @@ class JobTask:
             'fileName': name,
             'fileSize': size,
             'type': 1,
-            'alistTaskId': None,
+            'openlistTaskId': None,
             'status': status,
             'errMsg': errMsg,
             'createTime': createTime

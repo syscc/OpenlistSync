@@ -19,7 +19,7 @@ def init_sql(conn):
                        ")")
         cursor.execute("insert into user_list(userName, passwd) values ('admin', ?)",
                        (commonUtils.passwd2md5(passwd), ))
-        cursor.execute("create table openlist_list("
+        cursor.execute("create table list("
                        "id integer primary key autoincrement,"
                        "remark text,"       # 备注
                        "url text,"          # 地址，例如http://localhost:5244
@@ -33,7 +33,7 @@ def init_sql(conn):
                        "remark text,"                       # 备注
                        "srcPath text,"                      # 来源目录，结尾有无斜杠都可，建议有斜杠
                        "dstPath text,"                      # 目标目录，结尾有无斜杠都可，建议有斜杠，多个以英文冒号[:]分隔
-                       "alistId integer,"                   # 引擎id，openlist_list.id
+                       "openlistId integer,"                # 引擎id，list.id
                        "useCacheT integer DEFAULT 0,"       # 扫描目标目录时，是否使用缓存，0-不使用，1-使用
                        "scanIntervalT integer DEFAULT 0,"   # 目标目录扫描间隔，单位秒
                        "useCacheS integer DEFAULT 0,"       # 扫描源目录时，是否使用缓存，0-不使用，1-使用
@@ -53,7 +53,7 @@ def init_sql(conn):
                        "end_date text DEFAULT NULL,"        # 结束时间
                        "exclude text DEFAULT NULL,"         # 排除无需同步项，类似gitignore语法，英文冒号分隔多个规则
                        "createTime integer DEFAULT (strftime('%s', 'now')),"
-                       " unique (srcPath, dstPath, alistId))")
+                       " unique (srcPath, dstPath, openlistId))")
         cursor.execute("create table job_task("
                        "id integer primary key autoincrement,"
                        "jobId integer,"             # 所属工作id，job.id
@@ -139,7 +139,11 @@ def init_sql(conn):
                 cursor.execute("update job set scanIntervalT = 10, useCacheT = 0 where useCacheT = 2")
             if sqlVersion < 250609:
                 try:
-                    cursor.execute("alter table alist_list rename to openlist_list")
+                    cursor.execute("alter table alist_list rename to list")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute("alter table openlist_list rename to list")
                 except Exception:
                     pass
                 try:
