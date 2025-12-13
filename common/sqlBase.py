@@ -72,10 +72,10 @@ def fetchall_to_page(sql, params=None):
     else:
         sql_end += ' limit :pageSize offset :offset'
         params['offset'] = (int(pageNum) - 1) * int(pageSize)
-    dataList = fetchall_to_table(sql + sql_end, params)
+    rst = fetchall_to_table(sql + sql_end, params)
     count = fetch_first_val(sql.replace('*', 'count(id)'), params)
     return {
-        'dataList': dataList,
+        'list': rst,
         'count': count
     }
 

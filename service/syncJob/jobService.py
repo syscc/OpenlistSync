@@ -191,7 +191,7 @@ def getJobList(req):
     :return:
     """
     res = jobMapper.getJobList(req)
-    res['jobList'] = res.pop('dataList')
+    res['jobList'] = res.pop('list')
     return res
 
 

@@ -91,7 +91,7 @@ def getTaskList(req):
     jobTaskList = jobMapper.getJobTaskList(req)
     # 需要更新任务数的列表（适配旧版本）
     needUpdateList = []
-    for item in jobTaskList['dataList']:
+    for item in jobTaskList['list']:
         if item['taskNum']:
             taskNum = json.loads(item['taskNum'])
         else:
@@ -106,7 +106,7 @@ def getTaskList(req):
     if needUpdateList:
         updateThread = threading.Thread(target=jobMapper.updateJobTaskNumMany, args=(needUpdateList,))
         updateThread.start()
-    jobTaskList['taskList'] = jobTaskList.pop('dataList')
+    jobTaskList['taskList'] = jobTaskList.pop('list')
     return jobTaskList
 
 
@@ -141,5 +141,5 @@ def getTaskItemList(req):
     :return:
     """
     res = jobMapper.getJobTaskItemList(req)
-    res['taskItemList'] = res.pop('dataList')
+    res['taskItemList'] = res.pop('list')
     return res
