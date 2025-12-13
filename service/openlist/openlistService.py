@@ -2,14 +2,14 @@ import logging
  
 
 from common.LNG import G
-from mapper.alistMapper import getAlistById, addAlist, removeAlist, getAlistList, updateAlist
+from mapper.openlistMapper import getOpenlistById, addOpenlist, removeOpenlist, getOpenlistList, updateOpenlist
 from service.openlist.openlistClient import OpenListClient
 
 openlistClientList = {}
 
 
 def getClientList():
-    clientList = getAlistList()
+    clientList = getOpenlistList()
     for client in clientList:
         del client['token']
     return clientList
@@ -18,7 +18,7 @@ def getClientList():
 def getClientById(openlistId):
     global openlistClientList
     if openlistId not in openlistClientList:
-        ol = getAlistById(openlistId)
+        ol = getOpenlistById(openlistId)
         openlistClientList[openlistId] = OpenListClient(ol['url'], ol['token'], openlistId)
     return openlistClientList[openlistId]
 
@@ -36,13 +36,13 @@ def updateClient(openlist):
                 del openlist['token']
     if openlist['url'].endswith('/'):
         openlist['url'] = openlist['url'][:-1]
-    olOld = getAlistById(openlistId)
+    olOld = getOpenlistById(openlistId)
     if olOld['url'] != openlist['url'] or 'token' in openlist:
         if 'token' not in openlist:
             raise Exception(G('without_token'))
         client = OpenListClient(openlist['url'], openlist['token'], openlistId)
         openlistClientList[openlistId] = client
-    updateAlist(openlist)
+    updateOpenlist(openlist)
 
 
 def addClient(openlist):
@@ -52,7 +52,7 @@ def addClient(openlist):
         openlist['url'] = openlist['url'][:-1]
     try:
         client = OpenListClient(openlist['url'], openlist['token'])
-        openlistId = addAlist({
+        openlistId = addOpenlist({
             'remark': openlist['remark'],
             'url': openlist['url'],
             'userName': client.user,
@@ -72,7 +72,7 @@ def removeClient(openlistId):
     global openlistClientList
     if openlistId in openlistClientList:
         del openlistClientList[openlistId]
-    removeAlist(openlistId)
+    removeOpenlist(openlistId)
 
 
 def getChildPath(openlistId, path):

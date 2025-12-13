@@ -23,14 +23,14 @@ from service.notify import notifyService
 class CopyItem:
     def __init__(self, srcPath, dstPath, fileName, fileSize, method, jobTask):
         self.jobTask = jobTask
-        self.alistClient = self.jobTask.alistClient
+        self.openlistClient = self.jobTask.openlistClient
         self.taskId = self.jobTask.taskId
         self.srcPath = srcPath
         self.dstPath = dstPath
         self.fileName = fileName
         self.fileSize = fileSize
         self.copyType = 0 if method < 2 else 2
-        self.alistTaskId = None
+        self.openlistTaskId = None
         self.status = 0
         self.progress = 0.0
         self.errMsg = None
@@ -46,12 +46,12 @@ class CopyItem:
             if self.jobTask.breakFlag:
                 self.status = 4
             else:
-                self.alistTaskId = self.alistClient.copyFile(self.srcPath, self.dstPath, self.fileName)
+                self.openlistTaskId = self.openlistClient.copyFile(self.srcPath, self.dstPath, self.fileName)
         except Exception as e:
             self.errMsg = str(e)
             self.status = 7
         else:
-            if self.alistTaskId is None:
+            if self.openlistTaskId is None:
                 self.status = 2
             elif self.status != 4:
                 self.checkAndGetStatus()
@@ -65,10 +65,10 @@ class CopyItem:
         while True:
             if self.jobTask.breakFlag:
                 self.status = 4
-                if self.alistTaskId is not None:
+                if self.openlistTaskId is not None:
                     try:
-                        self.alistClient.copyTaskCancel(self.alistTaskId)
-                        self.alistClient.copyTaskDelete(self.alistTaskId)
+                        self.openlistClient.copyTaskCancel(self.openlistTaskId)
+                        self.openlistClient.copyTaskDelete(self.openlistTaskId)
                     except Exception as e:
                         self.status = 7
                         self.errMsg = str(e)
@@ -76,7 +76,7 @@ class CopyItem:
             cuTime = time.time()
             time.sleep(0.61 if cuTime - self.jobTask.lastWatching < 3 else 2.93)
             try:
-                taskInfo = self.alistClient.taskInfo(self.alistTaskId)
+                taskInfo = self.openlistClient.taskInfo(self.openlistTaskId)
             except Exception as e:
                 logger = logging.getLogger()
                 logger.exception(e)
@@ -96,7 +96,7 @@ class CopyItem:
             # 删除结束的任务
             if taskInfo['state'] in [2, 4, 7]:
                 try:
-                    self.alistClient.copyTaskDelete(self.alistTaskId)
+                    self.openlistClient.copyTaskDelete(self.openlistTaskId)
                     break
                 except Exception:
                     break
@@ -104,11 +104,11 @@ class CopyItem:
     def endIt(self):
         if self.copyType == 2 and self.status == 2:
             try:
-                self.alistClient.deleteFile(self.srcPath, [self.fileName], self.jobTask.job['scanIntervalS'])
+                self.openlistClient.deleteFile(self.srcPath, [self.fileName], self.jobTask.job['scanIntervalS'])
             except Exception as e:
                 self.status = 7
                 self.errMsg = G('copy_success_but_delete_fail').format(str(e))
-        self.jobTask.copyHook(self.srcPath, self.dstPath, self.fileName, self.fileSize, self.alistTaskId, self.status,
+        self.jobTask.copyHook(self.srcPath, self.dstPath, self.fileName, self.fileSize, self.openlistTaskId, self.status,
                               errMsg=self.errMsg, copyType=self.copyType, createTime=self.createTime)
         del self.jobTask.doing[self.doingKey]
 
@@ -123,13 +123,13 @@ class JobTask:
         self.taskId = taskId
         self.jobClient = vm
         self.job = self.jobClient.job
-        self.alistClient = openlistService.getClientById(self.job['alistId'])
+        self.openlistClient = openlistService.getClientById(self.job['openlistId'])
         self.createTime = time.time()
         # 已完成（包含成功或者失败）
         self.finish = []
-        # 已经提交到alist的任务
+        # 已经提交到openlist的任务
         self.doing = {}
-        # 等待提交到alist的任务
+        # 等待提交到openlist的任务
         self.waiting = []
         # 上次查看详情的时间戳，低于3秒表示正在看，在看则快速检查状态，否则低速检查以节约开销
         self.lastWatching = 0.0
@@ -289,7 +289,7 @@ class JobTask:
         self.jobClient.jobDoing = False
         self.jobClient.currentJobTask = None
 
-    def copyHook(self, srcPath, dstPath, name, size, alistTaskId=None, status=0, errMsg=None, isPath=0,
+    def copyHook(self, srcPath, dstPath, name, size, openlistTaskId=None, status=0, errMsg=None, isPath=0,
                  copyType=0, createTime=int(time.time())):
         """
         复制文件回调
@@ -297,7 +297,7 @@ class JobTask:
         :param dstPath: 目标目录
         :param name: 文件名
         :param size: 文件大小
-        :param alistTaskId: alist任务id
+        :param openlistTaskId: openlist任务id
         :param status: 0-等待中，1-运行中，2-成功，3-取消中，4-已取消，5-出错（将重试），6-失败中，
                         7-已失败，8-等待重试中，9-等待重试回调执行中，10-目录扫描失败，11-目录创建失败
         :param errMsg: 错误信息
@@ -313,7 +313,7 @@ class JobTask:
             'fileName': name,
             'fileSize': size,
             'type': copyType,
-            'alistTaskId': alistTaskId,
+            'alistTaskId': openlistTaskId,
             'status': status,
             'errMsg': errMsg,
             'createTime': createTime
@@ -366,7 +366,7 @@ class JobTask:
         """
         复制文件
         vm.job['method']: 0-仅新增，1-全同步，2-移动模式
-        vm.job['copyHook']: 复制文件回调，（srcPath, dstPath, name, size, alistTaskId=None, status=0, errMsg=None, isPath=0）
+        vm.job['copyHook']: 复制文件回调，（srcPath, dstPath, name, size, openlistTaskId=None, status=0, errMsg=None, isPath=0）
         vm.job['delHook']: 删除文件回调，（dstPath, name, size, status=2:2-成功、7-失败, errMsg=None, isPath=0）
         :param srcPath: 源目录
         :param dstPath: 目标目录
@@ -383,7 +383,7 @@ class JobTask:
         """
         删除文件（或目录）
         self.job['method']: 0-仅新增，1-全同步，2-移动模式
-        self.copyHook: 复制文件回调，（srcPath, dstPath, name, size, alistTaskId=None, status=0, errMsg=None, isPath=0, createTime）
+        self.copyHook: 复制文件回调，（srcPath, dstPath, name, size, openlistTaskId=None, status=0, errMsg=None, isPath=0, createTime）
         self.delHook: 删除文件回调，（dstPath, name, size, status=2:2-成功、7-失败, errMsg=None, isPath=0, createTime）
         :param path: 所在路径
         :param fileName: 文件名（或目录名）
@@ -397,7 +397,7 @@ class JobTask:
         errMsg = None
         createTime = int(time.time())
         try:
-            self.alistClient.deleteFile(path, [fileName if not isPath else fileName[:-1]], self.job['scanIntervalT'])
+            self.openlistClient.deleteFile(path, [fileName if not isPath else fileName[:-1]], self.job['scanIntervalT'])
         except Exception as e:
             status = 7
             errMsg = str(e)
@@ -420,7 +420,7 @@ class JobTask:
         useCache = 1 if isSrc and not firstDst else self.job[f"useCache{'S' if isSrc else 'T'}"]
         scanInterval = self.job[f"scanInterval{'S' if isSrc else 'T'}"]
         try:
-            return self.alistClient.fileListApi(path, useCache, scanInterval, spec, rootPath)
+            return self.openlistClient.fileListApi(path, useCache, scanInterval, spec, rootPath)
         except Exception as e:
             logger = logging.getLogger()
             errMsg = G('scan_error').format(G('src' if isSrc else 'dst'), str(e))
@@ -439,9 +439,9 @@ class JobTask:
         for s in segs:
             cur = cur + s + '/'
             try:
-                self.alistClient.fileListApi(cur, 0, scanInterval, None, cur)
+                self.openlistClient.fileListApi(cur, 0, scanInterval, None, cur)
             except Exception:
-                self.alistClient.mkdir(cur, scanInterval)
+                self.openlistClient.mkdir(cur, scanInterval)
 
     def syncWithHave(self, srcPath, dstPath, spec, srcRootPath, dstRootPath, firstDst):
         """
@@ -537,7 +537,7 @@ class JobClient:
     def __init__(self, job, isInit=False):
         """
         初始化job
-        :param job: {id(新增时不需要), enable, srcPath, dstPath, alistId, useCacheT, scanIntervalT, useCacheS, scanIntervalS, method, interval, exclude, cron相关}
+        :param job: {id(新增时不需要), enable, srcPath, dstPath, openlistId, useCacheT, scanIntervalT, useCacheS, scanIntervalS, method, interval, exclude, cron相关}
         """
         addJobId = 0
         if 'enable' not in job:
@@ -555,7 +555,7 @@ class JobClient:
         # 正在执行中的作业信息；仅在内存中，不入库，高速读写；执行完毕后批量入库，如果遇到异常终止，不会补偿入库
         # 单项结构 {
         #   'taskId':   所属任务id
-        #   'alistTaskId': alist任务id
+        #   'openlistTaskId': openlist任务id
         #   'srcPath':  来源路径
         #   'dstPath':  目标路径
         #   'fileName': 文件名或者文件目录名

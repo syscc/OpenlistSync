@@ -44,11 +44,11 @@ def getJobByTaskId(taskId):
 
 def addJob(job):
     # 新增作业
-    return sqlBase.execute_insert("insert into job (enable, remark, srcPath, dstPath, alistId, useCacheT, "
+    return sqlBase.execute_insert("insert into job (enable, remark, srcPath, dstPath, openlistId, useCacheT, "
                                   "scanIntervalT, useCacheS, scanIntervalS, method, interval"
                                   ",isCron, year, month, day, week, day_of_week, hour, minute, second, "
                                   "start_date, end_date, exclude) "
-                                  "VALUES (:enable, :remark, :srcPath, :dstPath, :alistId, :useCacheT, "
+                                  "VALUES (:enable, :remark, :srcPath, :dstPath, :openlistId, :useCacheT, "
                                   ":scanIntervalT, :useCacheS, :scanIntervalS, :method, :interval, "
                                   ":isCron, :year, :month, :day, :week, :day_of_week, :hour, :minute, :second, "
                                   ":start_date, :end_date, :exclude)", job)
@@ -56,7 +56,7 @@ def addJob(job):
 
 def updateJob(job):
     # 更新作业
-    sqlBase.execute_update("update job set enable=:enable, remark=:remark, srcPath=:srcPath, dstPath=:dstPath, alistId=:alistId, "
+    sqlBase.execute_update("update job set enable=:enable, remark=:remark, srcPath=:srcPath, dstPath=:dstPath, openlistId=:openlistId, "
                            " useCacheT=:useCacheT, scanIntervalT=:scanIntervalT, useCacheS=:useCacheS, scanIntervalS=:scanIntervalS, "
                            "method=:method, interval=:interval, isCron=:isCron, year=:year, "
                            "month=:month, day=:day, week=:week, day_of_week=:day_of_week, hour=:hour, minute=:minute, "
@@ -148,8 +148,8 @@ def deleteJobTaskByRunTime(runTime):
 
 def addJobTaskItemMany(jobTaskItemList):
     sqlBase.execute_manny(
-        "insert into job_task_item (taskId, srcPath, dstPath, isPath, fileName, fileSize, type, alistTaskId, status, errMsg) "
-        "VALUES (:taskId, :srcPath, :dstPath, :isPath, :fileName, :fileSize, :type, :alistTaskId, :status, :errMsg)",
+        "insert into job_task_item (taskId, srcPath, dstPath, isPath, fileName, fileSize, type, openlistTaskId, status, errMsg) "
+        "VALUES (:taskId, :srcPath, :dstPath, :isPath, :fileName, :fileSize, :type, :openlistTaskId, :status, :errMsg)",
         jobTaskItemList)
 
 
@@ -175,6 +175,6 @@ def updateJobTaskItemStatusByIdMany(taskList):
                           "where id=:id", taskList)
 
 
-def updateJobTaskItemByAlistTaskId(alistTaskId, status, progress):
+def updateJobTaskItemByOpenlistTaskId(openlistTaskId, status, progress):
     sqlBase.execute_update("update job_task_item set status=?, progress=? "
-                           "where alistTaskId=?", (status, progress, alistTaskId))
+                           "where openlistTaskId=?", (status, progress, openlistTaskId))

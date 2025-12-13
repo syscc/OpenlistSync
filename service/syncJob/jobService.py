@@ -71,7 +71,7 @@ def addJobClient(job, isInit=False):
         enable: 1,
         srcPath: '',
         dstPath: '',
-        alistId: null,
+        openlistId: null,
         speed: 0,
         method: 0,
         interval: 60
@@ -92,7 +92,7 @@ def editJobClient(job):
         enable: 1,
         srcPath: '',
         dstPath: '',
-        alistId: null,
+        openlistId: null,
         speed: 0,
         method: 0,
         interval: 60

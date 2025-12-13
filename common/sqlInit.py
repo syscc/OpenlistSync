@@ -4,7 +4,7 @@ from common import sqlBase
 
 @sqlBase.connect_sql
 def init_sql(conn):
-    cuVersion = 250608
+    cuVersion = 250609
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE name='user_list'")
     passwd = None
@@ -19,7 +19,7 @@ def init_sql(conn):
                        ")")
         cursor.execute("insert into user_list(userName, passwd) values ('admin', ?)",
                        (commonUtils.passwd2md5(passwd), ))
-        cursor.execute("create table alist_list("
+        cursor.execute("create table openlist_list("
                        "id integer primary key autoincrement,"
                        "remark text,"       # 备注
                        "url text,"          # 地址，例如http://localhost:5244
@@ -33,7 +33,7 @@ def init_sql(conn):
                        "remark text,"                       # 备注
                        "srcPath text,"                      # 来源目录，结尾有无斜杠都可，建议有斜杠
                        "dstPath text,"                      # 目标目录，结尾有无斜杠都可，建议有斜杠，多个以英文冒号[:]分隔
-                       "alistId integer,"                   # 引擎id，alist_list.id
+                       "alistId integer,"                   # 引擎id，openlist_list.id
                        "useCacheT integer DEFAULT 0,"       # 扫描目标目录时，是否使用缓存，0-不使用，1-使用
                        "scanIntervalT integer DEFAULT 0,"   # 目标目录扫描间隔，单位秒
                        "useCacheS integer DEFAULT 0,"       # 扫描源目录时，是否使用缓存，0-不使用，1-使用
@@ -72,7 +72,7 @@ def init_sql(conn):
                        "fileName text,"             # 文件名
                        "fileSize integer,"          # 文件大小
                        "type integer,"              # 操作类型，0-复制，1-删除，2-移动
-                       "alistTaskId text,"          # alist任务id，仅限复制任务，否则为空
+                       "openlistTaskId text,"       # openlist任务id，仅限复制任务，否则为空
                        "status integer DEFAULT 0,"  # 状态，0-等待中，1-运行中，2-成功，3-取消中，4-已取消，5-出错（将重试），6-失败中
                                                     # ，7-已失败，8-等待重试中，9-等待重试回调执行中
                                                     # 对于删除任务，只有0-等待、2-成功、7-失败
@@ -137,6 +137,19 @@ def init_sql(conn):
                 cursor.execute("alter table job add column useCacheS integer DEFAULT 0")
                 cursor.execute("alter table job add column scanIntervalS integer DEFAULT 0")
                 cursor.execute("update job set scanIntervalT = 10, useCacheT = 0 where useCacheT = 2")
+            if sqlVersion < 250609:
+                try:
+                    cursor.execute("alter table alist_list rename to openlist_list")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute("alter table job rename column alistId to openlistId")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute("alter table job_task_item rename column alistTaskId to openlistTaskId")
+                except Exception:
+                    pass
             cursor.execute(f"update user_list set sqlVersion={cuVersion}")
             conn.commit()
     cursor.close()

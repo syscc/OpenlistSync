@@ -78,8 +78,8 @@ def handleWebhook(req):
                     except Exception:
                         pass
                 else:
-                    from mapper import alistMapper
-                    alists = alistMapper.getAlistList()
+                    from mapper import openlistMapper
+                    alists = openlistMapper.getOpenlistList()
                     if not alists:
                         return
                     if not alists:
@@ -94,11 +94,11 @@ def handleWebhook(req):
                         except Exception:
                             pass
                         return
-                    alistId = int(alists[0]['id'])
+                    openlistId = int(alists[0]['id'])
                     from service.openlist import openlistService
                     client = None
                     try:
-                        client = openlistService.getClientById(alistId)
+                        client = openlistService.getClientById(openlistId)
                     except Exception:
                         client = None
                     def _is_tv(s):
@@ -205,7 +205,7 @@ def handleWebhook(req):
                         'remark': remark,
                         'srcPath': srcPath,
                         'dstPath': ':'.join(dsts),
-                        'alistId': alistId,
+                        'openlistId': openlistId,
                         'useCacheT': 1,
                         'scanIntervalT': 1,
                         'useCacheS': 0,
@@ -231,7 +231,7 @@ def handleWebhook(req):
                         pass
                     jobService.addJobClient(payload)
                     jobs2 = jobMapper.getJobList()
-                    created = next((j for j in jobs2 if j.get('remark') == remark and int(j.get('alistId', 0)) == alistId), None)
+                    created = next((j for j in jobs2 if j.get('remark') == remark and int(j.get('openlistId', 0)) == openlistId), None)
                     if created:
                         jobService.doJobManual(int(created['id']))
                         try:
@@ -256,9 +256,9 @@ def handleWebhook(req):
             result['job'] = 'triggered'
         except Exception as e:
             result['job'] = str(e)
-    if 'alistId' in req and 'paths' in req and req['alistId'] is not None and req['paths']:
+    if 'openlistId' in req and 'paths' in req and req['openlistId'] is not None and req['paths']:
         from service.openlist import openlistService
-        client = openlistService.getClientById(int(req['alistId']))
+        client = openlistService.getClientById(int(req['openlistId']))
         for p in req['paths']:
             if p is None:
                 continue
