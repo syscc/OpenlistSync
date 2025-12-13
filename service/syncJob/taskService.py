@@ -106,6 +106,7 @@ def getTaskList(req):
     if needUpdateList:
         updateThread = threading.Thread(target=jobMapper.updateJobTaskNumMany, args=(needUpdateList,))
         updateThread.start()
+    jobTaskList['taskList'] = jobTaskList.pop('dataList')
     return jobTaskList
 
 

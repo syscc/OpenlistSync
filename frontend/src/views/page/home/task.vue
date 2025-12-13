@@ -8,7 +8,7 @@
 		<taskCurrent @currentChange="currentChange" class="task-current" :style="`height: ${currentHeight}px;`"
 			:jobId="params.id"></taskCurrent>
 		<div class="table-box" :style="`height: calc(100% - 117px - ${currentHeight}px);`">
-			<el-table :data="taskData.dataList" height="100%" class="table-data" v-loading="loading" empty-text="暂无任务">
+			<el-table :data="taskData.taskList" height="100%" class="table-data" v-loading="loading" empty-text="暂无任务">
 				<el-table-column type="index" label="序号" align="center" width="60"></el-table-column>
 				<el-table-column prop="status" label="状态" width="110">
 					<template slot-scope="scope">
@@ -90,8 +90,8 @@
 		data() {
 			return {
 				taskData: {
-					dataList: [],
-					conut: 0
+					taskList: [],
+					count: 0
 				},
 				params: {
 					id: null,
@@ -115,7 +115,10 @@
 					this.loading = true;
 					jobGetTask(this.params).then(res => {
 						this.loading = false;
-						this.taskData = res.data;
+						this.taskData = {
+							taskList: res.data.taskList,
+							count: res.data.count
+						};
 					}).catch(err => {
 						this.loading = false;
 					})
