@@ -159,8 +159,8 @@
 								<span v-else>启用</span>
 							</div>
 						</el-form-item>
-						<el-form-item prop="alistId" label="引擎">
-							<el-select v-model="editData.alistId" placeholder="请选择引擎" class="label_width"
+						<el-form-item prop="openlistId" label="引擎">
+							<el-select v-model="editData.openlistId" placeholder="请选择引擎" class="label_width"
 								no-data-text="暂无引擎,请前往引擎管理创建">
 								<el-option v-for="item in alistList" :label="item.url" :value="item.id">
 									<span
@@ -171,7 +171,7 @@
 							</el-select>
 						</el-form-item>
 						<el-form-item prop="srcPath" label="源目录">
-							<div v-if="editData.alistId == null" class="label_width">请先选择引擎</div>
+							<div v-if="editData.openlistId == null" class="label_width">请先选择引擎</div>
 							<div v-else class="label_width">
 								{{editData.srcPath}}
 								<el-button type="primary" size="mini"
@@ -180,7 +180,7 @@
 							</div>
 						</el-form-item>
 						<el-form-item prop="dstPath" label="目标目录">
-							<div v-if="editData.alistId == null" class="label_width">请先选择引擎</div>
+							<div v-if="editData.openlistId == null" class="label_width">请先选择引擎</div>
 							<div v-else class="label_width">
 								<div class="label-list-box">
 									<div v-for="(item, index) in editData.dstPath" class="label-list-item">
@@ -331,7 +331,7 @@
 				<el-button type="primary" @click="submitDisable" :loading="editLoading">确 定</el-button>
 			</span>
 		</el-dialog>
-		<pathSelect v-if="editData" :openlistId="editData.alistId" ref="pathSelect" @submit="submitPath"></pathSelect>
+		<pathSelect v-if="editData" :openlistId="editData.openlistId" ref="pathSelect" @submit="submitPath"></pathSelect>
 	</div>
 </template>
 
@@ -418,7 +418,7 @@
 						message: '请选择目标目录',
 						trgger: 'change'
 					}],
-					alistId: [{
+					openlistId: [{
 						type: 'number',
 						required: true,
 						message: '请选择引擎',
@@ -544,7 +544,7 @@
 					remark: '',
 					srcPath: '',
 					dstPath: [],
-					alistId: null,
+					openlistId: null,
 					useCacheT: 1,
 					scanIntervalT: 1,
 					useCacheS: 0,
