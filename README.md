@@ -214,18 +214,6 @@ task_timeout=72
 - `GET/POST/PUT/DELETE /svr/notify` 通知配置（列表、增删改、测试）
 - `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）
 
-## 研发状态
-
-如需体验研发中的版本（可能存在明显错误或严重 bug，不建议小白尝试），可以到 [DockerHub](https://hub.docker.com/r/syscc/openlistsync) 或 [Release](https://github.com/syscc/OpenlistSync/releases) 获取最新的包含 `dev` 或 `pre` 的 tag。
-
-规划方向：
-- Windows 版本优化（开机自启、隐藏页面、启动/停止）
-- OpenList 加密同步支持
-- 移动端适配
-- 本地引擎支持与加密
-- 配置导入导出、多语言支持
-- Linux 一键安装、更新与卸载脚本
-
 ## Star随时间
 
 [![Stargazers over time](https://starchart.cc/syscc/OpenlistSync.svg?variant=adaptive)](https://starchart.cc/syscc/OpenlistSync)
