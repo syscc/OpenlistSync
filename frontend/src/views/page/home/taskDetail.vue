@@ -40,8 +40,8 @@
 		data() {
 			return {
 				taskItemData: {
-					dataList: [],
-					conut: 0
+					taskItemList: [],
+					count: 0
 				},
 				params: {
 					taskId: null,
@@ -72,7 +72,10 @@
 							item.progress = parseInt(item.progress);
 							item.progress = item.progress < 100 ? item.progress : 100;
 						})
-						this.taskItemData = res.data;
+						this.taskItemData = {
+							taskItemList: res.data.dataList,
+							count: res.data.count
+						};
 					}).catch(err => {
 						this.loading = false;
 					})

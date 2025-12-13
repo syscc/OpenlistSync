@@ -1,6 +1,6 @@
 <template>
 	<div class="taskDetailTable">
-		<el-table :data="taskItemData.dataList" class="table-data" height="calc(100% - 36px)" v-loading="loading"
+		<el-table :data="taskItemData.taskItemList" class="table-data" height="calc(100% - 36px)" v-loading="loading"
 			empty-text="无数据">
 			<el-table-column type="expand">
 				<template slot-scope="props">
@@ -82,8 +82,8 @@
 			taskItemData: {
 				type: Object,
 				default: {
-					dataList: [],
-					conut: 0
+					taskItemList: [],
+					count: 0
 				}
 			},
 			loading: {
