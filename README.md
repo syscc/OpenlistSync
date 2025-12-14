@@ -34,6 +34,70 @@
 
 **如果好用，请 Star！非常感谢！**  [GitHub](https://github.com/syscc/OpenlistSync)  [DockerHub](https://hub.docker.com/r/syscc/openlistsync)
 
+<details>
+
+<summary>Webhook 与自动同步使用方法点击展开截图</summary>
+
+由于更新频繁，截图仅供参考，以实际为准
+
+#### MoviePilot需要用到的插件
+
+1. `聚合消息通知` 用来发消息给 `OpenlistSync`
+2. `外部消息转发` 用来通知 `OpenlistSync` 的消息至 `MoviePilot` 可选
+3. 关于 `Openlist` 的驱动配置我建议吧所有网盘用别名聚合到一起，只要支持302的网盘均可以，然后 `Strm` 驱动配置到别名路径即可，`保存Strm本地路径` 记得开启选择本地媒体strm路径内
+
+#### 聚合消息通知设置
+
+![聚合消息通知设置](README/聚合消息通知.jpg)
+
+1. 当前使用通知渠道选 `HTTP请求`
+2. HTTP请求 请求方法 `POST` 请求URL `http://ip:8023/webhook`
+3. 请求头
+```
+{
+  "Content-Type": "application/json"
+}
+```
+4. 请求参数
+```
+{
+  "title": "${title}",
+  "text": "${text}"
+}
+```
+5. 消息类型 选择 `整理入库`
+
+#### 外部消息转发设置
+
+![外部消息转发设置](README/外部消息转发.jpg)
+
+1. 启用插件
+2. 开启通知
+3. 消息类型 `其他`
+
+#### OpenlistSync通知配置
+
+![通知配置](README/通知配置.jpg)
+
+1. 方式选 `自定义`
+2. 请求地址 `http://moviepilot_ip:port/api/v1/plugin/MsgNotify/send_json?apikey=api_token`
+3. 请求方法 `POST`
+4. 请求提类型 `application/json`
+5. 标题参数名 `title`
+6. 是否需要内容 `需要`
+7. 内容参数名 `text`
+
+#### 演示自动同步到网盘并自动入库
+
+![任务自动同步中](README/任务自动同步中.png)
+
+![任务自动同步结束](README/任务自动同步结束.jpg)
+
+![任务通知流程](README\任务通知流程.jpg)
+
+</details>
+
+
 ## 须知
 
 > **注意：v0.0.6 版本数据库不兼容 ＜v0.0.5**
@@ -132,7 +196,7 @@ services:
 
 ### 再使用
 
-访问`http://ip:8023`
+访问 `http://ip:8023`
 
 如果你没有修改，默认账号为`admin`，密码请到日志中查看输出，登录后请立即前往系统设置修改密码
 
