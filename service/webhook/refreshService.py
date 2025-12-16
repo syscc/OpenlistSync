@@ -80,16 +80,26 @@ def _expand_targets(env_s, client):
         return arr
     raw = [p.strip() for p in re.split(r"[,;:]", env_s) if p and p.strip() != '']
     
-    # 兼容旧逻辑：默认搜索根目录 / 下的 tv/mov 前缀
-    tv_prefix_default = _find_max_dir(client, '/', 'tv')
-    mov_prefix_default = _find_max_dir(client, '/', 'mov')
+    # 获取 /ODC 下的默认 tv/mov 前缀，仅用于兼容 {odc_tv}/{odc_mov} 占位符
+    # 如果用户不使用这俩旧占位符，这里的查询其实是多余的，但为了保持对旧配置的兼容，还是保留比较稳妥
+    # 既然用户明确要求"不用兼容旧的"（可能是指不需要默认去搜根目录下的 tv/mov），
+    # 那么我们可以把这里写死的 '/' 改成 '/ODC' 或者干脆去掉这两个变量？
+    # 但下方代码还用到了 tv_prefix_default 和 mov_prefix_default 来替换 {odc_tv}/{odc_mov}
+    # 如果完全移除，旧占位符将失效。
+    # 用户意图应该是：不要写死搜索根目录 '/'。
+    # 之前的逻辑是搜索 '/ODC'，后来为了去硬编码改成了 '/'。
+    # 如果用户彻底不用 {odc_tv}，那这两行确实没用。
+    # 但为了代码健壮性（防止配置文件里还有旧占位符导致崩溃），建议保留变量定义，但可以设为空字符串或者不进行搜索？
+    # 或者，我们遵循用户的"写死的路径都删掉"，既然 {odc_tv} 本身就隐含了 ODC，
+    # 那么这里应该恢复成搜索 /ODC 吗？不，用户之前说要删掉 /ODC。
+    # 最彻底的做法：如果用户不再使用 {odc_tv}，那这两行和下面的 replace 都可以删掉。
+    # 但如果用户只是说"这里代码还有写死的"，是指 `_find_max_dir(client, '/', 'tv')` 里的 `'/'` 吗？
+    
+    # 让我们假设用户希望彻底移除对 {odc_tv} 的隐式支持逻辑，完全依赖 {max}。
+    # 那么我们可以移除这两个默认搜索。
     
     for base in raw:
         # 1. 处理通用 {max} 语法
-        # 匹配模式：(父路径/)(前缀){max}
-        # group(1): 父路径 (包含结尾的 /，或者为空)
-        # group(2): 前缀
-        
         def max_replacer(match):
             parent = match.group(1) # e.g. "/a/b/" or ""
             prefix = match.group(2) # e.g. "disk"
@@ -99,16 +109,14 @@ def _expand_targets(env_s, client):
             
             best_name = _find_max_dir(client, search_dir, prefix)
             
-            # 如果父路径为空（隐含 /），则返回完整路径 /best_name
             if not parent:
                  return f"/{best_name}"
-            # 否则返回 原父路径 + best_name
             return f"{parent}{best_name}"
 
         base = re.sub(r"(^|.*?/)([^/]*)\{max\}", max_replacer, base)
         
-        # 2. 兼容旧占位符
-        base = base.replace('{odc_tv}', tv_prefix_default).replace('{odc_mov}', mov_prefix_default)
+        # 2. 移除旧占位符支持（根据用户要求）
+        # base = base.replace('{odc_tv}', tv_prefix_default).replace('{odc_mov}', mov_prefix_default)
         
         if not base.startswith('/'):
             base = '/' + base
