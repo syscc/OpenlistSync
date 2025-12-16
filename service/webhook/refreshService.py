@@ -123,10 +123,14 @@ def refresh_after_task(job, status):
     if dst_used:
         env_refresh = os.getenv('DST_REFRESH_TV') if is_tv else os.getenv('DST_REFRESH_MOV')
     else:
-        env_refresh = os.getenv('SYNC_REFRESH_TV') if is_tv else os.getenv('SYNC_REFRESH_MOV')
+        # 尝试获取 SYNC_REFRESH_TV/MOV，如果为空则尝试获取 REFRESH_TV/MOV_TARGETS（兼容旧配置或用户习惯）
+        if is_tv:
+            env_refresh = os.getenv('SYNC_REFRESH_TV') or os.getenv('REFRESH_TV_TARGETS')
+        else:
+            env_refresh = os.getenv('SYNC_REFRESH_MOV') or os.getenv('REFRESH_MOV_TARGETS')
     
     logger.info(f"Refresh env config: dst_used={dst_used}, env_refresh={env_refresh}")
-
+  
     if env_refresh:
         raw = [p.strip() for p in re.split(r"[,;:]", env_refresh) if p and p.strip() != '']
         tv_prefix = _select_latest_odc_prefix(client, 'tv')
