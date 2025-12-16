@@ -46,14 +46,24 @@ def _resolve_season_path(client, base_path):
     return base_path + '/'
 
 
-def _select_latest_odc_prefix(client, prefix):
+def _find_max_dir(client, parent_dir, prefix):
+    """
+    通用函数：查找指定目录下以 prefix 为前缀的子目录中，数字后缀最大的那个。
+    """
     try:
-        dirs = client.filePathList('/ODC')
+        # 确保父目录以 / 开头
+        if not parent_dir.startswith('/'):
+            parent_dir = '/' + parent_dir
+        
+        dirs = client.filePathList(parent_dir)
         best = None
         best_n = -1
+        
         for it in dirs:
             name = it.get('path') or ''
+            # name 是纯文件名，不带路径
             if name.startswith(prefix):
+                # 提取数字后缀
                 m = re.search(r"(\d+)$", name)
                 n = int(m.group(1)) if m else 0
                 if n > best_n:
@@ -63,50 +73,47 @@ def _select_latest_odc_prefix(client, prefix):
     except Exception:
         return f"{prefix}1"
 
-
-_recent_refresh = {}
-
-
-def refresh_after_task(job, status):
-    logger = logging.getLogger()
-    if status not in [2, 3]:
-        logger.info(f"Refresh skipped: status {status} not in [2, 3]")
-        return
-    logger.info(f"Refresh start: job={job.get('remark')}, status={status}")
-    
-    openlistId = int(job['openlistId'])
-    client = openlistService.getClientById(openlistId)
-    remark = job.get('remark') or ''
-    src = job.get('srcPath') or ''
-    dsts = (job.get('dstPath') or '').split(':') if job.get('dstPath') else []
-    src_norm = re.sub(r"/{2,}", "/", src).rstrip('/') + '/'
-    tv_src_env = (os.getenv('TVsource') or '').strip()
-    mov_src_env = (os.getenv('MOVsource') or '').strip()
-    tv_src_norm = re.sub(r"/{2,}", "/", tv_src_env).rstrip('/') + '/' if tv_src_env else ''
-    mov_src_norm = re.sub(r"/{2,}", "/", mov_src_env).rstrip('/') + '/' if mov_src_env else ''
-    is_tv = bool(tv_src_norm and src_norm.startswith(tv_src_norm))
-    logger.info(f"Refresh context: is_tv={is_tv}, src={src}, dsts={dsts}")
-    odc_prefix = None
-    base_paths = []
-    name = remark
-    dedup = []
-    seen = set()
-    tv_src = os.getenv('TVsource') or ''
-    mov_src = os.getenv('MOVsource') or ''
-    def _expand_targets(env_s):
-        arr = []
-        if not env_s:
-            return arr
-        raw = [p.strip() for p in re.split(r"[,;:]", env_s) if p and p.strip() != '']
-        tv_prefix = _select_latest_odc_prefix(client, 'tv')
-        mov_prefix = _select_latest_odc_prefix(client, 'mov')
-        for base in raw:
-            base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
-            if not base.startswith('/'):
-                base = '/' + base
-            base = re.sub(r"/{2,}", "/", base).rstrip('/')
-            arr.append(base)
+def _expand_targets(env_s):
+    arr = []
+    if not env_s:
         return arr
+    raw = [p.strip() for p in re.split(r"[,;:]", env_s) if p and p.strip() != '']
+    
+    # 兼容旧逻辑：先计算出默认的 /ODC 下的 tv/mov 前缀
+    tv_prefix_default = _find_max_dir(client, '/ODC', 'tv')
+    mov_prefix_default = _find_max_dir(client, '/ODC', 'mov')
+    
+    for base in raw:
+        # 1. 处理通用 {max} 语法
+        # 匹配模式：(父路径/)(前缀){max}
+        # group(1): 父路径 (包含结尾的 /，或者为空)
+        # group(2): 前缀
+        
+        def max_replacer(match):
+            parent = match.group(1) # e.g. "/a/b/" or ""
+            prefix = match.group(2) # e.g. "disk"
+            
+            # 如果没有父路径，默认使用 /ODC
+            search_dir = parent if parent else '/ODC'
+            
+            best_name = _find_max_dir(client, search_dir, prefix)
+            
+            # 如果父路径为空（隐含 /ODC），则返回完整路径 /ODC/best_name
+            if not parent:
+                 return f"/ODC/{best_name}"
+            # 否则返回 原父路径 + best_name
+            return f"{parent}{best_name}"
+
+        base = re.sub(r"(^|.*?/)([^/]*)\{max\}", max_replacer, base)
+        
+        # 2. 兼容旧占位符
+        base = base.replace('{odc_tv}', tv_prefix_default).replace('{odc_mov}', mov_prefix_default)
+        
+        if not base.startswith('/'):
+            base = '/' + base
+        base = re.sub(r"/{2,}", "/", base).rstrip('/')
+        arr.append(base)
+    return arr
     dst_target_env = os.getenv('DST_TV_TARGETS') if is_tv else os.getenv('DST_MOV_TARGETS')
     sync_target_env = os.getenv('SYNC_TV_TARGETS') if is_tv else os.getenv('SYNC_MOV_TARGETS')
     dst_bases = _expand_targets(dst_target_env)
@@ -132,14 +139,11 @@ def refresh_after_task(job, status):
     logger.info(f"Refresh env config: dst_used={dst_used}, env_refresh={env_refresh}")
   
     if env_refresh:
-        raw = [p.strip() for p in re.split(r"[,;:]", env_refresh) if p and p.strip() != '']
-        tv_prefix = _select_latest_odc_prefix(client, 'tv')
-        mov_prefix = _select_latest_odc_prefix(client, 'mov')
-        for base in raw:
-            base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
-            if not base.startswith('/'):
-                base = '/' + base
-            base = re.sub(r"/{2,}", "/", base).rstrip('/')
+        # 使用通用展开逻辑处理刷新路径中的 {max}
+        # 注意：这里我们递归调用 _expand_targets 来处理 env_refresh 字符串
+        # 但 _expand_targets 内部会返回列表，我们需要处理这个列表
+        raw_refresh_paths = _expand_targets(env_refresh)
+        for base in raw_refresh_paths:
             path = f"{base}/{name}"
             if path not in seen:
                 dedup.append(path)

@@ -186,10 +186,10 @@ services:
       # - DST_MOV_TARGETS=/shanct/电影  # 优先同步电影到此集合；支持 ,;: 分隔
       # - DST_REFRESH_TV=/media/电视剧,/videos/电视剧 # DST 同步时的刷新集合；支持 ,;: 分隔
       # - DST_REFRESH_MOV=/media/电影,/videos/电影    # DST 同步时的刷新集合；支持 ,;: 分隔
-      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧   # 回退电视剧同步集合；{odc_tv} → /ODC/tvX
-      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影     # 回退电影同步集合；{odc_mov} → /ODC/movX
-      - SYNC_REFRESH_TV=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧 # SYNC 同步时的刷新集合
-      - SYNC_REFRESH_MOV=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影   # SYNC 同步时的刷新集合
+      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/tv{max}/电视剧   # 回退电视剧同步集合；{odc_tv} → /ODC/tvX
+      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/mov{max}/电影     # 回退电影同步集合；{odc_mov} → /ODC/movX
+      - SYNC_REFRESH_TV=/115/videos/电视剧,/ODC/tv{max}/电视剧,/videos/电视剧 # SYNC 同步时的刷新集合
+      - SYNC_REFRESH_MOV=/115/videos/电影,/ODC/mov{max}/电影,/videos/电影   # SYNC 同步时的刷新集合
     volumes:
       - ./data:/app/data
 ```
@@ -269,7 +269,7 @@ task_timeout=72
 | `SYNC_REFRESH_TV` | 当走 `SYNC_*` 同步集合时使用的刷新集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧` |
 | `SYNC_REFRESH_MOV` | 当走 `SYNC_*` 同步集合时使用的刷新集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影` |
 
-- 占位符说明：`{odc_tv}`/`{odc_mov}` 会替换为 `/ODC/tvX` 或 `/ODC/movX` 的最大值（扫描 `/ODC` 选择当前最大序号）。
+- 占位符说明：`{max}` 会替换为 `最大阿拉伯数值` 的最大值（如`/ODC/tv{max}` 有 `tv1-10` 扫描 `/ODC` 选择 `/tv10` 当前最大序号）。
 - 源存在判定：`TVsource` 或 `MOVsource` 下存在 `名称(年份)` 目录才会创建作业。
 
 

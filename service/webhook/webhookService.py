@@ -140,20 +140,64 @@ def handleWebhook(req):
                         if client is None:
                             return f"{prefix}1"
                         try:
-                            odc = client.filePathList('/ODC')
+                            # 1. 如果 prefix 包含路径分隔符，则解析出父目录和前缀
+                            if '/' in prefix:
+                                parent_dir = os.path.dirname(prefix)
+                                search_prefix = os.path.basename(prefix)
+                                if not parent_dir.startswith('/'):
+                                    parent_dir = '/' + parent_dir
+                            else:
+                                parent_dir = '/ODC'
+                                search_prefix = prefix
+                                
+                            dirs = client.filePathList(parent_dir)
                             best = None
                             best_n = -1
-                            for it in odc:
+                            for it in dirs:
                                 name = it.get('path') or ''
-                                if name.startswith(prefix):
+                                if name.startswith(search_prefix):
                                     m = re.search(r"(\d+)$", name)
                                     n = int(m.group(1)) if m else 0
                                     if n > best_n:
                                         best_n = n
                                         best = name
-                            return best or f"{prefix}1"
+                            # 如果是全路径模式，返回完整路径；否则仅返回文件名（旧逻辑兼容）
+                            # 但这里的 _pick 原本只返回文件名（如 tv14）
+                            # 调用方 re.sub(..., lambda m: _pick(m.group(1)))
+                            # 如果 regex 是 ([^/]*)\{max\}，它只捕获了文件名部分
+                            # 这意味着它不支持路径？
+                            # 确实，webhookService.py 的 regex 需要同步更新！
+                            return best or f"{search_prefix}1"
                         except Exception:
+                            if '/' in prefix:
+                                return os.path.basename(prefix) + "1"
                             return f"{prefix}1"
+
+                    # 辅助函数：统一替换 {max}
+                    def _resolve_max_placeholder(path_str):
+                        def max_replacer(match):
+                            parent = match.group(1) # e.g. "/a/b/" or ""
+                            prefix = match.group(2) # e.g. "disk"
+                            
+                            # 构造 _pick 需要的参数：如果是 /ODC 下的，传文件名；否则传完整路径前缀
+                            # 但 _pick 上面我改写成了支持路径的
+                            # 如果 parent 为空，传 prefix (tv) -> _pick 内部用 /ODC
+                            # 如果 parent 不为空，传 parent + prefix (/a/b/disk) -> _pick 内部解析
+                            
+                            arg = prefix
+                            if parent:
+                                arg = parent + prefix
+                            
+                            best_name = _pick(arg)
+                            
+                            # _pick 返回的是纯文件名 (best_name)
+                            # 我们需要重新组装
+                            if not parent:
+                                return f"/ODC/{best_name}"
+                            return f"{parent}{best_name}"
+
+                        return re.sub(r"(^|.*?/)([^/]*)\{max\}", max_replacer, path_str)
+
                     odc_prefix = _pick('tv' if tv_flag else 'mov')
                     srcPath = f"{media_root.rstrip('/')}/{remark}/"
                     dst_env = os.getenv('DST_TV_TARGETS') if tv_flag else os.getenv('DST_MOV_TARGETS')
@@ -164,6 +208,8 @@ def handleWebhook(req):
                             tv_prefix = _pick('tv')
                             mov_prefix = _pick('mov')
                             for base in raw_dst:
+                                # 支持 {max} 语法
+                                base = _resolve_max_placeholder(base)
                                 base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
                                 if not base.startswith('/'):
                                     base = '/' + base
@@ -182,6 +228,8 @@ def handleWebhook(req):
                             tv_prefix = _pick('tv')
                             mov_prefix = _pick('mov')
                             for base in raw:
+                                # 支持 {max} 语法
+                                base = _resolve_max_placeholder(base)
                                 base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
                                 if not base.startswith('/'):
                                     base = '/' + base
