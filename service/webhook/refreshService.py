@@ -85,6 +85,7 @@ def refresh_after_task(job, status):
     tv_src_norm = re.sub(r"/{2,}", "/", tv_src_env).rstrip('/') + '/' if tv_src_env else ''
     mov_src_norm = re.sub(r"/{2,}", "/", mov_src_env).rstrip('/') + '/' if mov_src_env else ''
     is_tv = bool(tv_src_norm and src_norm.startswith(tv_src_norm))
+    logger.info(f"Refresh context: is_tv={is_tv}, src={src}, dsts={dsts}")
     odc_prefix = None
     base_paths = []
     name = remark
@@ -140,7 +141,9 @@ def refresh_after_task(job, status):
                 dedup.append(path)
                 seen.add(path)
     else:
+        # 如果未配置刷新变量，则使用默认策略
         if dst_used:
+            # DST模式：默认刷新源目录
             base = (tv_src if is_tv else mov_src).strip()
             if base:
                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
@@ -148,6 +151,15 @@ def refresh_after_task(job, status):
                 if path not in seen:
                     dedup.append(path)
                     seen.add(path)
+        else:
+            # SYNC模式：默认刷新所有同步目标目录
+            # 注意：这里的dsts是任务实际执行的目标路径列表（已包含变量替换后的结果）
+            for d in dsts:
+                d = d.rstrip('/')
+                # 任务目标路径通常已经是 .../剧名/ 的形式，所以直接使用
+                if d not in seen:
+                    dedup.append(d)
+                    seen.add(d)
     base_paths = dedup
     if not base_paths:
         logger.info("Refresh skipped: no base_paths found")

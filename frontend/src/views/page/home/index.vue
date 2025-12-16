@@ -7,7 +7,7 @@
 					:loading="btnLoading" type="primary">执行全部</el-button>
 			</div>
 			<div class="top-box-title">作业管理</div>
-			<menuRefresh :autoRefresh="false" :freshInterval="5273" :loading="loading" @getData="getJobList">
+			<menuRefresh :autoRefresh="true" :freshInterval="5273" :loading="loading" @getData="getJobList">
 			</menuRefresh>
 		</div>
 		<el-table :data="jobData.jobList" class="table-data" height="calc(100% - 117px)" v-loading="loading">
