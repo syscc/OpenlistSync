@@ -403,7 +403,7 @@ class JobTask:
             errMsg = str(e)
         self.delHook(path, fileName, None if isPath else size, status, errMsg, isPath, createTime)
 
-    def listDir(self, path, firstDst, spec, rootPath, isSrc=True):
+    def listDir(self, path, firstDst, spec, rootPath, isSrc=True, ignoreError=False):
         """
         列出目录
         self.job['useCacheT']: 扫描目标目录时，是否使用缓存，0-不使用，1-使用
@@ -415,6 +415,7 @@ class JobTask:
         :param spec:
         :param rootPath:
         :param isSrc:
+        :param ignoreError: 是否忽略错误（不记录日志和回调）
         :return:
         """
         useCache = 1 if isSrc and not firstDst else self.job[f"useCache{'S' if isSrc else 'T'}"]
@@ -422,6 +423,8 @@ class JobTask:
         try:
             return self.openlistClient.fileListApi(path, useCache, scanInterval, spec, rootPath)
         except Exception as e:
+            if ignoreError:
+                raise e
             logger = logging.getLogger()
             errMsg = G('scan_error').format(G('src' if isSrc else 'dst'), str(e))
             logger.error(errMsg)
@@ -441,7 +444,12 @@ class JobTask:
             try:
                 self.openlistClient.fileListApi(cur, 0, scanInterval, None, cur)
             except Exception:
-                self.openlistClient.mkdir(cur, scanInterval)
+                try:
+                    self.openlistClient.mkdir(cur, scanInterval)
+                except Exception as e:
+                    logger = logging.getLogger()
+                    logger.error(f"Failed to mkdir: {cur}, error: {str(e)}")
+                    raise e
 
     def syncWithHave(self, srcPath, dstPath, spec, srcRootPath, dstRootPath, firstDst):
         """
@@ -459,7 +467,7 @@ class JobTask:
         try:
             srcFiles = self.listDir(srcPath, firstDst, spec, srcRootPath)
             try:
-                dstFiles = self.listDir(dstPath, firstDst, spec, dstRootPath, False)
+                dstFiles = self.listDir(dstPath, firstDst, spec, dstRootPath, False, ignoreError=True)
             except Exception:
                 self.syncWithOutHave(srcPath, dstPath, spec, srcRootPath, dstRootPath, firstDst)
                 return
@@ -506,6 +514,8 @@ class JobTask:
         except Exception as e:
             status = 7
             errMsg = str(e)
+            logger = logging.getLogger()
+            logger.error(f"SyncWithOutHave ensurePath failed: {dstPath}, error: {errMsg}")
         # 目录回调
         self.copyHook(srcPath, dstPath, None, None, status=status, errMsg=errMsg, isPath=1)
         if status != 2:

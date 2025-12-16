@@ -1,18 +1,22 @@
 import re
 import os
 import time
+import logging
 
 from service.openlist import openlistService
 from service.notify import notifyService
 
 
 def _refresh_path(client, path):
+    logger = logging.getLogger()
     try:
         if not path.endswith('/'):
             path = path + '/'
         client.fileListApi(path, 0, 0, None, path)
+        logger.info(f"Refresh success: {path}")
         return True, None
     except Exception as e:
+        logger.error(f"Refresh failed: {path}, error: {str(e)}")
         return False, str(e)
 
 
@@ -64,8 +68,12 @@ _recent_refresh = {}
 
 
 def refresh_after_task(job, status):
+    logger = logging.getLogger()
     if status not in [2, 3]:
+        logger.info(f"Refresh skipped: status {status} not in [2, 3]")
         return
+    logger.info(f"Refresh start: job={job.get('remark')}, status={status}")
+    
     openlistId = int(job['openlistId'])
     client = openlistService.getClientById(openlistId)
     remark = job.get('remark') or ''
@@ -115,6 +123,9 @@ def refresh_after_task(job, status):
         env_refresh = os.getenv('DST_REFRESH_TV') if is_tv else os.getenv('DST_REFRESH_MOV')
     else:
         env_refresh = os.getenv('SYNC_REFRESH_TV') if is_tv else os.getenv('SYNC_REFRESH_MOV')
+    
+    logger.info(f"Refresh env config: dst_used={dst_used}, env_refresh={env_refresh}")
+
     if env_refresh:
         raw = [p.strip() for p in re.split(r"[,;:]", env_refresh) if p and p.strip() != '']
         tv_prefix = _select_latest_odc_prefix(client, 'tv')
@@ -139,7 +150,11 @@ def refresh_after_task(job, status):
                     seen.add(path)
     base_paths = dedup
     if not base_paths:
+        logger.info("Refresh skipped: no base_paths found")
         return
+    
+    logger.info(f"Refresh targets: {base_paths}")
+
     # 解析 Season 并刷新
     resolved = []
     for base in base_paths:
@@ -152,15 +167,20 @@ def refresh_after_task(job, status):
             ok_list.append(p)
         else:
             fail_list.append(f"{p} ❌ {msg}")
+    
+    logger.info(f"Refresh result: ok={len(ok_list)}, fail={len(fail_list)}")
+
     notify_list = notifyService.getNotifyList(True)
     if not notify_list:
+        logger.info("Refresh notify skipped: no notify config")
         return
     title = ('目录刷新完成 ✔️' if not fail_list else '目录刷新失败 ❌')
     content = ("全部目录刷新成功：\n" + "\n".join(ok_list)) if not fail_list else ("以下目录刷新失败：\n" + "\n".join(fail_list))
     for notify in notify_list:
         try:
             notifyService.sendNotify(notify, title, content, False)
-        except Exception:
+        except Exception as e:
+            logger.error(f"Refresh notify failed: {str(e)}")
             pass
     key = f"{remark}:{status}"
     now = time.time()
