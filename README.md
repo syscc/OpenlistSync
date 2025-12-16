@@ -179,6 +179,7 @@ services:
     user: "1000:1001"
     environment:
       - WEBHOOK_DELAY=60 # Webhook延迟触发秒数 取决是否需要等MoviePilot刮削完成后同步，如果不需要可以设置为3
+      # - WEBHOOK_OPENLIST_NAME=OpenList # Webhook 自动创建任务时使用的 OpenList 引擎备注名；若未配置或留空，默认使用第一个引擎
       - TVsource=/media/电视剧        # 电视剧源根目录
       - MOVsource=/media/电影        # 电影源根目录
       # DST开头变量适用于临时存放（如追新电视剧），整季完结后可删除并同步至SYNC路径，非必要不需要启用！
@@ -260,6 +261,8 @@ task_timeout=72
 
 | 变量 | 说明 | 示例 |
 |---|---|---|
+| `WEBHOOK_DELAY` | Webhook 延迟触发时间（秒） | `60` |
+| `WEBHOOK_OPENLIST_NAME` | Webhook 自动创建任务时使用的 OpenList 引擎备注名；若未配置或留空，默认使用第一个引擎 | `OpenList` |
 | `TVsource` | 电视剧源根 | `/media/电视剧` |
 | `MOVsource` | 电影源根 | `/media/电影` |
 | `DST_TV_TARGETS` / `DST_MOV_TARGETS` | 优先同步根集合（原样使用），存在同名目录时仅同步到这里；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/shanct/电视剧` 或 `/shanct/电影` |

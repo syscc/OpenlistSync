@@ -94,7 +94,33 @@ def handleWebhook(req):
                         except Exception:
                             pass
                         return
-                    openlistId = int(openlists[0]['id'])
+                    
+                    openlistId = None
+                    webhook_engine_name = os.getenv('WEBHOOK_OPENLIST_NAME')
+                    
+                    if webhook_engine_name:
+                        webhook_engine_name = webhook_engine_name.strip()
+                        target_op = next((op for op in openlists if op.get('remark') == webhook_engine_name), None)
+                        if target_op:
+                            openlistId = int(target_op['id'])
+                        else:
+                            # 如果指定了引擎但未找到，发送通知并停止
+                            try:
+                                lg.error(f"Webhook configured engine '{webhook_engine_name}' not found")
+                                notify_list = notifyService.getNotifyList(True)
+                                if notify_list:
+                                    for n in notify_list:
+                                        try:
+                                            notifyService.sendNotify(n, 'Webhook 错误', f"未找到名称为 '{webhook_engine_name}' 的OpenList引擎", False)
+                                        except Exception:
+                                            pass
+                            except Exception:
+                                pass
+                            return
+                    else:
+                        # 默认使用第一个引擎
+                        openlistId = int(openlists[0]['id'])
+
                     from service.openlist import openlistService
                     client = None
                     try:
@@ -189,19 +215,15 @@ def handleWebhook(req):
 
                         return re.sub(r"(^|.*?/)([^/]*)\{max\}", max_replacer, path_str)
 
-                    odc_prefix = _pick('tv' if tv_flag else 'mov')
                     srcPath = f"{media_root.rstrip('/')}/{remark}/"
                     dst_env = os.getenv('DST_TV_TARGETS') if tv_flag else os.getenv('DST_MOV_TARGETS')
                     dsts = []
                     if dst_env and client is not None:
                         try:
                             raw_dst = [p.strip() for p in re.split(r"[,;:]", dst_env) if p and p.strip() != '']
-                            tv_prefix = _pick('tv')
-                            mov_prefix = _pick('mov')
                             for base in raw_dst:
                                 # 支持 {max} 语法
                                 base = _resolve_max_placeholder(base)
-                                base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
                                 if not base.startswith('/'):
                                     base = '/' + base
                                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
@@ -216,12 +238,9 @@ def handleWebhook(req):
                         sync_env = os.getenv('SYNC_TV_TARGETS') if tv_flag else os.getenv('SYNC_MOV_TARGETS')
                         if sync_env:
                             raw = [p.strip() for p in re.split(r"[,;:]", sync_env) if p and p.strip() != '']
-                            tv_prefix = _pick('tv')
-                            mov_prefix = _pick('mov')
                             for base in raw:
                                 # 支持 {max} 语法
                                 base = _resolve_max_placeholder(base)
-                                base = base.replace('{odc_tv}', tv_prefix).replace('{odc_mov}', mov_prefix)
                                 if not base.startswith('/'):
                                     base = '/' + base
                                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
