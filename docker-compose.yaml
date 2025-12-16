@@ -17,9 +17,9 @@ services:
       # - DST_MOV_TARGETS=/shanct/电影  # 优先同步电影到此集合；支持 ,;: 分隔
       # - DST_REFRESH_TV=/media/电视剧,/videos/电视剧 # DST 同步时的刷新集合；支持 ,;: 分隔
       # - DST_REFRESH_MOV=/media/电影,/videos/电影    # DST 同步时的刷新集合；支持 ,;: 分隔
-      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/{odc_tv}/电视剧   # 回退电视剧同步集合；{odc_tv} → /ODC/tvX
-      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/{odc_mov}/电影     # 回退电影同步集合；{odc_mov} → /ODC/movX
-      - SYNC_REFRESH_TV=/115/videos/电视剧,/ODC/{odc_tv}/电视剧,/videos/电视剧 # SYNC 同步时的刷新集合
-      - SYNC_REFRESH_MOV=/115/videos/电影,/ODC/{odc_mov}/电影,/videos/电影   # SYNC 同步时的刷新集合
+      - SYNC_TV_TARGETS=/115/videos/电视剧,/ODC/tv{max}/电视剧   # 回退电视剧同步集合；{max} → 自动匹配最大数字后缀目录
+      - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/mov{max}/电影     # 回退电影同步集合；{max} → 自动匹配最大数字后缀目录
+      - SYNC_REFRESH_TV=/115/videos/电视剧,/ODC/tv{max}/电视剧,/videos/电视剧 # SYNC 同步时的刷新集合
+      - SYNC_REFRESH_MOV=/115/videos/电影,/ODC/mov{max}/电影,/videos/电影   # SYNC 同步时的刷新集合
     volumes:
       - ./data:/app/data

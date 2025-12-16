@@ -73,15 +73,16 @@ def _find_max_dir(client, parent_dir, prefix):
     except Exception:
         return f"{prefix}1"
 
-def _expand_targets(env_s):
+
+def _expand_targets(env_s, client):
     arr = []
     if not env_s:
         return arr
     raw = [p.strip() for p in re.split(r"[,;:]", env_s) if p and p.strip() != '']
     
-    # 兼容旧逻辑：先计算出默认的 /ODC 下的 tv/mov 前缀
-    tv_prefix_default = _find_max_dir(client, '/ODC', 'tv')
-    mov_prefix_default = _find_max_dir(client, '/ODC', 'mov')
+    # 兼容旧逻辑：默认搜索根目录 / 下的 tv/mov 前缀
+    tv_prefix_default = _find_max_dir(client, '/', 'tv')
+    mov_prefix_default = _find_max_dir(client, '/', 'mov')
     
     for base in raw:
         # 1. 处理通用 {max} 语法
@@ -93,14 +94,14 @@ def _expand_targets(env_s):
             parent = match.group(1) # e.g. "/a/b/" or ""
             prefix = match.group(2) # e.g. "disk"
             
-            # 如果没有父路径，默认使用 /ODC
-            search_dir = parent if parent else '/ODC'
+            # 如果没有父路径，默认使用根目录 /
+            search_dir = parent if parent else '/'
             
             best_name = _find_max_dir(client, search_dir, prefix)
             
-            # 如果父路径为空（隐含 /ODC），则返回完整路径 /ODC/best_name
+            # 如果父路径为空（隐含 /），则返回完整路径 /best_name
             if not parent:
-                 return f"/ODC/{best_name}"
+                 return f"/{best_name}"
             # 否则返回 原父路径 + best_name
             return f"{parent}{best_name}"
 
@@ -114,10 +115,42 @@ def _expand_targets(env_s):
         base = re.sub(r"/{2,}", "/", base).rstrip('/')
         arr.append(base)
     return arr
+
+
+_recent_refresh = {}
+
+
+def refresh_after_task(job, status):
+    logger = logging.getLogger()
+    if status not in [2, 3]:
+        logger.info(f"Refresh skipped: status {status} not in [2, 3]")
+        return
+    logger.info(f"Refresh start: job={job.get('remark')}, status={status}")
+    
+    openlistId = int(job['openlistId'])
+    client = openlistService.getClientById(openlistId)
+    remark = job.get('remark') or ''
+    src = job.get('srcPath') or ''
+    dsts = (job.get('dstPath') or '').split(':') if job.get('dstPath') else []
+    src_norm = re.sub(r"/{2,}", "/", src).rstrip('/') + '/'
+    tv_src_env = (os.getenv('TVsource') or '').strip()
+    mov_src_env = (os.getenv('MOVsource') or '').strip()
+    tv_src_norm = re.sub(r"/{2,}", "/", tv_src_env).rstrip('/') + '/' if tv_src_env else ''
+    mov_src_norm = re.sub(r"/{2,}", "/", mov_src_env).rstrip('/') + '/' if mov_src_env else ''
+    is_tv = bool(tv_src_norm and src_norm.startswith(tv_src_norm))
+    logger.info(f"Refresh context: is_tv={is_tv}, src={src}, dsts={dsts}")
+    odc_prefix = None
+    base_paths = []
+    name = remark
+    dedup = []
+    seen = set()
+    tv_src = os.getenv('TVsource') or ''
+    mov_src = os.getenv('MOVsource') or ''
+
     dst_target_env = os.getenv('DST_TV_TARGETS') if is_tv else os.getenv('DST_MOV_TARGETS')
     sync_target_env = os.getenv('SYNC_TV_TARGETS') if is_tv else os.getenv('SYNC_MOV_TARGETS')
-    dst_bases = _expand_targets(dst_target_env)
-    sync_bases = _expand_targets(sync_target_env)
+    dst_bases = _expand_targets(dst_target_env, client)
+    sync_bases = _expand_targets(sync_target_env, client)
     dst_used = False
     for d in dsts:
         for b in dst_bases:
@@ -137,12 +170,10 @@ def _expand_targets(env_s):
             env_refresh = os.getenv('SYNC_REFRESH_MOV') or os.getenv('REFRESH_MOV_TARGETS')
     
     logger.info(f"Refresh env config: dst_used={dst_used}, env_refresh={env_refresh}")
-  
+    
     if env_refresh:
         # 使用通用展开逻辑处理刷新路径中的 {max}
-        # 注意：这里我们递归调用 _expand_targets 来处理 env_refresh 字符串
-        # 但 _expand_targets 内部会返回列表，我们需要处理这个列表
-        raw_refresh_paths = _expand_targets(env_refresh)
+        raw_refresh_paths = _expand_targets(env_refresh, client)
         for base in raw_refresh_paths:
             path = f"{base}/{name}"
             if path not in seen:

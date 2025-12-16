@@ -147,7 +147,7 @@ def handleWebhook(req):
                                 if not parent_dir.startswith('/'):
                                     parent_dir = '/' + parent_dir
                             else:
-                                parent_dir = '/ODC'
+                                parent_dir = '/'
                                 search_prefix = prefix
                                 
                             dirs = client.filePathList(parent_dir)
@@ -161,12 +161,6 @@ def handleWebhook(req):
                                     if n > best_n:
                                         best_n = n
                                         best = name
-                            # 如果是全路径模式，返回完整路径；否则仅返回文件名（旧逻辑兼容）
-                            # 但这里的 _pick 原本只返回文件名（如 tv14）
-                            # 调用方 re.sub(..., lambda m: _pick(m.group(1)))
-                            # 如果 regex 是 ([^/]*)\{max\}，它只捕获了文件名部分
-                            # 这意味着它不支持路径？
-                            # 确实，webhookService.py 的 regex 需要同步更新！
                             return best or f"{search_prefix}1"
                         except Exception:
                             if '/' in prefix:
@@ -179,10 +173,7 @@ def handleWebhook(req):
                             parent = match.group(1) # e.g. "/a/b/" or ""
                             prefix = match.group(2) # e.g. "disk"
                             
-                            # 构造 _pick 需要的参数：如果是 /ODC 下的，传文件名；否则传完整路径前缀
-                            # 但 _pick 上面我改写成了支持路径的
-                            # 如果 parent 为空，传 prefix (tv) -> _pick 内部用 /ODC
-                            # 如果 parent 不为空，传 parent + prefix (/a/b/disk) -> _pick 内部解析
+                            # 构造 _pick 需要的参数：如果是 / 下的，传文件名；否则传完整路径前缀
                             
                             arg = prefix
                             if parent:
@@ -193,7 +184,7 @@ def handleWebhook(req):
                             # _pick 返回的是纯文件名 (best_name)
                             # 我们需要重新组装
                             if not parent:
-                                return f"/ODC/{best_name}"
+                                return f"/{best_name}"
                             return f"{parent}{best_name}"
 
                         return re.sub(r"(^|.*?/)([^/]*)\{max\}", max_replacer, path_str)
