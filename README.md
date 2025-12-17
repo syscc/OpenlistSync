@@ -284,6 +284,25 @@ task_timeout=72
 - `GET/POST/PUT/DELETE /svr/notify` 通知配置（列表、增删改、测试）
 - `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）
 
+## 排除项规则简单说明
+
+- `OpenlistSync` 的排除项规则是一种类似gitignore的规则；
+  - `OpenlistSync` 规定的排除项根目录为同步来源或目标目录，例如你的来源目录为 `/baidu/pan/` ，使用规则 `/123321/*` 将忽略目录 `/baidu/pan/123321/` 下的文件；使用 `/baidu/*` 不会有效果。
+
+```
+.*              表示忽略所有 . 开头的文件和目录
+*.a             表示忽略所有 .a 结尾的文件
+/a.jpg          表示仅仅忽略项目根目录下的 a.jpg 文件，不包括 /abc/a.jpg
+data/:          表示忽略data目录下的所有内容，不忽略 data 文件
+/data:          表示忽略根目录下的data文件
+/*.pdf:         表示忽略/a.pdf，不忽略 /doc/a.pdf
+**/a.txt:       表示忽略/a.txt,a/a.txt,a/b/a.txt等
+a/**/b.txt:     表示忽略a/b.txt, a/x/b.txt,a/x/y/b.txt等
+/mtk/do.doc     表示过滤某个具体文件
+fd1/*           表示忽略/fd1/，/fd0/df1/等下所有文件
+/fd1/*          表示忽略/fd1/下所有文件，不包括/fd0/fd1/,/fd2/fd1/等
+```
+
 ## Star随时间
 
 [![Stargazers over time](https://starchart.cc/syscc/OpenlistSync.svg?variant=adaptive)](https://starchart.cc/syscc/OpenlistSync)

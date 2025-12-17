@@ -300,17 +300,11 @@
 							<span style="margin-left: 100px;">间隔方式不会立即调用，如有需要，可在创建后立即手动调用</span>
 						</template>
 						<template v-else-if="editData.isCron == 1">
-							<el-form-item prop="isCron" label="简易教程">
+							<el-form-item label="cron表达式">
 								<div class="label_width">
-									<span @click="toCron" class="to-link">
-										点击查看cron简易教程
-									</span>
+									<el-input v-model="editData.cronExpr" placeholder="秒 分 时 日 月 周 或 分 时 日 月 周" class="label_width">
+									</el-input>
 								</div>
-
-							</el-form-item>
-							<el-form-item v-for="item in cronList" :prop="item.label" :label="item.label">
-								<el-input v-model="editData[item.label]" :placeholder="item.palce" class="label_width">
-								</el-input>
 							</el-form-item>
 						</template>
 					</div>
@@ -485,11 +479,8 @@
 					this.openlistList = res.data;
 				})
 			},
-			toCron() {
-				window.open('https://dr34m.cn/2024/08/newpost-58/', '_blank');
-			},
 			toIgnore() {
-				window.open('https://dr34m.cn/2024/09/newpost-60/', '_blank');
+				window.open('https://github.com/syscc/OpenlistSync#%E6%8E%92%E9%99%A4%E9%A1%B9%E7%AE%80%E5%8D%95%E8%AF%B4%E6%98%8E/', '_blank');
 			},
 			putJob(row, pause = null) {
 				if (row.enable != 1 && pause !== false) {
@@ -600,16 +591,12 @@
 							return
 						}
 						if (postData.isCron == 1) {
-							let flag = 0;
-							this.cronList.forEach(item => {
-								if (postData[item.label] != null) {
-									flag += 1;
-								}
-							})
-							if (flag == 0) {
-								this.$message.error("选择cron方式时，至少有一项不能为空");
+							let expr = (this.editData && this.editData.cronExpr) ? String(this.editData.cronExpr).trim() : '';
+							if (!expr) {
+								this.$message.error("请输入cron表达式");
 								return
 							}
+							postData.cronExpr = expr;
 						}
 						postData.dstPath = postData.dstPath.join(':');
 						postData.exclude = postData.exclude.join(':');

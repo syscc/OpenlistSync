@@ -51,6 +51,34 @@ def cleanJobInput(job):
     :param job: job对象
     :return:
     """
+    # 支持 cronExpr 字段：按 5/6 段表达式解析为 APScheduler 字段
+    try:
+        if job.get('isCron') == 1 and isinstance(job.get('cronExpr', None), str):
+            expr = job.get('cronExpr', '').strip()
+            if expr != '':
+                parts = [p for p in expr.split(' ') if p.strip() != '']
+                if len(parts) == 6:
+                    job['second'] = parts[0]
+                    job['minute'] = parts[1]
+                    job['hour'] = parts[2]
+                    job['day'] = parts[3]
+                    job['month'] = parts[4]
+                    job['day_of_week'] = parts[5]
+                elif len(parts) == 5:
+                    job['second'] = '0'
+                    job['minute'] = parts[0]
+                    job['hour'] = parts[1]
+                    job['day'] = parts[2]
+                    job['month'] = parts[3]
+                    job['day_of_week'] = parts[4]
+                else:
+                    raise Exception(G('cron_lost'))
+            # cronExpr 仅作为辅助输入，不参与持久化
+            if 'cronExpr' in job:
+                del job['cronExpr']
+    except Exception:
+        # 解析失败时交由后续校验抛错
+        pass
     if job['isCron'] == 2 and job['enable'] != 1:
         job['enable'] = 1
     for key, value in job.items():
