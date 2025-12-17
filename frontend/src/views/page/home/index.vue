@@ -480,7 +480,7 @@
 				})
 			},
 			toIgnore() {
-				window.open('https://github.com/syscc/OpenlistSync#%E6%8E%92%E9%99%A4%E9%A1%B9%E7%AE%80%E5%8D%95%E8%AF%B4%E6%98%8E/', '_blank');
+				window.open('https://github.com/syscc/OpenlistSync?tab=readme-ov-file#%E6%8E%92%E9%99%A4%E9%A1%B9%E8%A7%84%E5%88%99%E7%AE%80%E5%8D%95%E8%AF%B4%E6%98%8E', '_blank');
 			},
 			putJob(row, pause = null) {
 				if (row.enable != 1 && pause !== false) {
