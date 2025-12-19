@@ -13,6 +13,35 @@ def handleWebhook(req):
     title = None
     text = None
     if isinstance(req, dict):
+        # 兼容 apikey 在第一层的情况，无论是否在 title/text 中找到
+        if 'apikey' in req:
+            req_apikey_val = str(req.get('apikey')).strip()
+            # 临时存入 req 以便后续验证逻辑使用（虽然 req 本身就是 dict，但为了逻辑清晰）
+            req['apikey'] = req_apikey_val
+
+    # API Key 验证逻辑（前置）
+    # 只要配置了 API Key，无论是否解析出 remark，都要验证
+    # 注意：必须在 parse_tv_title_to_remark 之前验证，因为如果 title/text 为 None，
+    # 之前的逻辑会直接跳过。但现在我们需要在这里拦截。
+    # 从 req 中获取 apikey（如果是 dict）
+    req_key = None
+    if isinstance(req, dict):
+        req_key = (req.get('apikey') or '').strip()
+    
+    api_key_env = (os.getenv('WEBHOOK_APIKEY') or '').strip()
+    # 只有当环境变量中有值，且值不为空时，才进行验证
+    # 如果环境变量配置了但为空（如 WEBHOOK_APIKEY=），则视为不启用验证
+    if api_key_env:
+        if req_key != api_key_env:
+            try:
+                import logging
+                logging.getLogger().warning(f"Webhook ignored: apikey mismatch. Expecting configured key, got '{req_key}'")
+            except Exception:
+                pass
+            result['job'] = 'ignored: apikey mismatch'
+            return result
+
+    if isinstance(req, dict):
         title = req.get('title')
         text = req.get('text')
         if title is None and text is None:
@@ -26,7 +55,9 @@ def handleWebhook(req):
             return None
         if '已入库' not in s:
             return None
-        m = re.search(r"\s*(.+?\(\d{4}\))\s*(S\d{1,2}|E\d{1,3}|E\d{1,3}-E?\d{1,3})?\s*已入库", s)
+        # 优化正则：支持 "剧名 (年份) S01 E01 已入库" 或 "剧名 (年份) S01E01 已入库" 等多种格式
+        # 只要能提取出 "剧名 (年份)" 即可，中间的内容不做严格限制
+        m = re.search(r"\s*(.+?\(\d{4}\)).*?已入库", s)
         if m:
             return m.group(1).strip()
         m2 = re.search(r"^\s*(.+?\(\d{4}\))", s)
@@ -34,6 +65,7 @@ def handleWebhook(req):
             return m2.group(1).strip()
         return None
     remark = parse_tv_title_to_remark(title) or parse_tv_title_to_remark(text)
+    
     if remark:
         delay = req.get('delay', None)
         def _read_env_file(key):
@@ -60,6 +92,7 @@ def handleWebhook(req):
             except Exception:
                 delay = 30
         def _trigger():
+            nonlocal remark
             try:
                 import logging
                 lg = logging.getLogger()
@@ -136,13 +169,33 @@ def handleWebhook(req):
                     mov_src = os.getenv('MOVsource') or ''
                     media_root = tv_src if tv_flag else mov_src
                     has_src = False
+                    
+                    # 尝试查找源目录，支持半角冒号转全角冒号
+                    final_remark = remark
                     if client is not None:
                         try:
                             dirs = client.filePathList(media_root)
                             names = [d['path'] for d in dirs]
-                            has_src = remark in names
+                            if remark in names:
+                                has_src = True
+                            elif ':' in remark:
+                                # 尝试将半角冒号替换为全角冒号
+                                remark_cn = remark.replace(':', '：')
+                                if remark_cn in names:
+                                    has_src = True
+                                    final_remark = remark_cn
+                            elif '：' in remark:
+                                # 尝试将全角冒号替换为半角冒号
+                                remark_en = remark.replace('：', ':')
+                                if remark_en in names:
+                                    has_src = True
+                                    final_remark = remark_en
                         except Exception:
                             has_src = False
+                    
+                    # 更新 remark 为实际存在的目录名（如果有替换）
+                    remark = final_remark
+                    
                     force_create = False
                     try:
                         force_create = bool(req.get('force', False)) or (os.getenv('WEBHOOK_FORCE_CREATE', 'false').lower() in ['1','true','yes'])

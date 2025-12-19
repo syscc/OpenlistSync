@@ -40,14 +40,20 @@ def setLogger(cusLevel=None):
 
 
 def get_post_data(self):
-    post_data = self.request.arguments
-    post_data = {x: post_data.get(x)[0].decode("utf-8") for x in post_data.keys()}
-    if not post_data:
-        post_data = self.request.body.decode('utf-8')
-        if post_data and post_data != '':
-            post_data = json.loads(post_data)
-        else:
-            post_data = {}
+    # 获取 URL 参数和表单参数
+    args = self.request.arguments
+    post_data = {x: args.get(x)[0].decode("utf-8") for x in args.keys()}
+    
+    # 尝试解析 Body 中的 JSON 数据
+    try:
+        body_data = self.request.body.decode('utf-8')
+        if body_data and body_data.strip() != '':
+            json_data = json.loads(body_data)
+            if isinstance(json_data, dict):
+                post_data.update(json_data)
+    except Exception:
+        pass
+        
     return post_data
 
 

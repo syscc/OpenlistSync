@@ -97,9 +97,6 @@ def _expand_targets(env_s, client):
 
         base = re.sub(r"(^|.*?/)([^/]*)\{max\}", max_replacer, base)
         
-        # 2. 移除旧占位符支持（根据用户要求）
-        # base = base.replace('{odc_tv}', tv_prefix_default).replace('{odc_mov}', mov_prefix_default)
-        
         if not base.startswith('/'):
             base = '/' + base
         base = re.sub(r"/{2,}", "/", base).rstrip('/')
@@ -167,6 +164,16 @@ def refresh_after_task(job, status):
             if path not in seen:
                 dedup.append(path)
                 seen.add(path)
+        
+        # 即使配置了刷新变量，也自动追加任务的目标路径（SYNC模式下）
+        # 这样可以保证：不管变量怎么配，至少任务同步过去的地方会被刷新
+        # 如果用户只想刷新变量指定的目录，不想刷新任务目标目录，这种场景比较少见，暂不考虑
+        if not dst_used:
+             for d in dsts:
+                d = d.rstrip('/')
+                if d not in seen:
+                    dedup.append(d)
+                    seen.add(d)
     else:
         # 如果未配置刷新变量，则使用默认策略
         if dst_used:
@@ -189,6 +196,28 @@ def refresh_after_task(job, status):
                     seen.add(d)
     base_paths = dedup
     if not base_paths:
+        # 如果通过变量解析出的刷新路径为空，尝试回退到默认策略（刷新任务目标路径）
+        # 这种情况通常发生在配置了变量但变量解析结果为空，或者变量配置有误
+        logger.info("Refresh base_paths empty from env, fallback to task dsts")
+        if dst_used:
+             # DST模式：默认刷新源目录
+            base = (tv_src if is_tv else mov_src).strip()
+            if base:
+                base = re.sub(r"/{2,}", "/", base).rstrip('/')
+                path = f"{base}/{name}"
+                if path not in seen:
+                    dedup.append(path)
+                    seen.add(path)
+        else:
+             # SYNC模式：默认刷新所有同步目标目录
+            for d in dsts:
+                d = d.rstrip('/')
+                if d not in seen:
+                    dedup.append(d)
+                    seen.add(d)
+        base_paths = dedup
+
+    if not base_paths:
         logger.info("Refresh skipped: no base_paths found")
         return
     
@@ -205,16 +234,32 @@ def refresh_after_task(job, status):
         if ok:
             ok_list.append(p)
         else:
-            fail_list.append(f"{p} ❌ {msg}")
+            fail_list.append({'path': p, 'msg': msg})
     
-    logger.info(f"Refresh result: ok={len(ok_list)}, fail={len(fail_list)}")
+    # 智能过滤：如果至少有一个路径刷新成功，则忽略那些因为“对象不存在”而失败的路径
+    # 场景：配置了 {max} 变量指向了新盘，但老剧集实际存在于旧盘。
+    # 旧盘路径通常包含在 dsts 中并会刷新成功，此时新盘路径的“不存在”报错是可以忽略的。
+    if ok_list:
+        final_fail_list = []
+        for item in fail_list:
+            msg = item['msg'] or ''
+            if 'object not found' in msg.lower():
+                logger.info(f"Refresh failed but ignored (covered by other success): {item['path']}")
+                continue
+            final_fail_list.append(f"{item['path']} ❌ {msg}")
+        fail_list_str = final_fail_list
+    else:
+        # 如果全部失败，则保留所有报错
+        fail_list_str = [f"{x['path']} ❌ {x['msg']}" for x in fail_list]
+
+    logger.info(f"Refresh result: ok={len(ok_list)}, fail={len(fail_list_str)}")
 
     notify_list = notifyService.getNotifyList(True)
     if not notify_list:
         logger.info("Refresh notify skipped: no notify config")
         return
-    title = ('目录刷新完成 ✔️' if not fail_list else '目录刷新失败 ❌')
-    content = ("全部目录刷新成功：\n" + "\n".join(ok_list)) if not fail_list else ("以下目录刷新失败：\n" + "\n".join(fail_list))
+    title = ('目录刷新完成 ✔️' if not fail_list_str else '目录刷新失败 ❌')
+    content = ("全部目录刷新成功：\n" + "\n".join(ok_list)) if not fail_list_str else ("以下目录刷新失败：\n" + "\n".join(fail_list_str))
     for notify in notify_list:
         try:
             notifyService.sendNotify(notify, title, content, False)

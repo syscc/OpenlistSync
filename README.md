@@ -62,7 +62,8 @@
 ```
 {
   "title": "${title}",
-  "text": "${text}"
+  "text": "${text}",
+  "apikey": "如果配置了WEBHOOK_APIKEY则需要此字段"
 }
 ```
 5. 消息类型 选择 `整理入库`
@@ -179,6 +180,7 @@ services:
     user: "1000:1001"
     environment:
       - WEBHOOK_DELAY=60 # Webhook延迟触发秒数 取决是否需要等MoviePilot刮削完成后同步，如果不需要可以设置为3
+      # - WEBHOOK_APIKEY= # Webhook API Key；若设置，则请求必须包含 apikey 字段且值匹配；若留空则不校验
       # - WEBHOOK_OPENLIST_NAME=OpenList # Webhook 自动创建任务时使用的 OpenList 引擎备注名；若未配置或留空，默认使用第一个引擎
       - TVsource=/media/电视剧        # 电视剧源根目录
       - MOVsource=/media/电影        # 电影源根目录
@@ -261,9 +263,10 @@ task_timeout=72
 
 | 变量 | 说明 | 示例 |
 |---|---|---|
-| `WEBHOOK_DELAY` | Webhook 延迟触发时间（秒） | `60` |
-| `WEBHOOK_OPENLIST_NAME` | Webhook 自动创建任务时使用的 OpenList 引擎备注名；若未配置或留空，默认使用第一个引擎 | `OpenList` |
-| `TVsource` | 电视剧源根 | `/media/电视剧` |
+264.| `WEBHOOK_DELAY` | Webhook 延迟触发时间（秒） | `60` |
+265.| `WEBHOOK_APIKEY` | Webhook API Key，可选。设置后，Webhook 请求必须包含 `apikey` 字段且值匹配 | `123456` |
+266.| `WEBHOOK_OPENLIST_NAME` | Webhook 自动创建任务时使用的 OpenList 引擎备注名；若未配置或留空，默认使用第一个引擎 | `OpenList` |
+267.| `TVsource` | 电视剧源根 | `/media/电视剧` |
 | `MOVsource` | 电影源根 | `/media/电影` |
 | `DST_TV_TARGETS` / `DST_MOV_TARGETS` | 优先同步根集合（原样使用），存在同名目录时仅同步到这里；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/shanct/电视剧` 或 `/shanct/电影` |
 | `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{max}`；仅在末尾追加“名称(年份)” | 例如 `/115/videos/电视剧,/ODC/tv{max}/电视剧` 或 `/115/videos/tv,tv{max}/tv` |
@@ -282,7 +285,7 @@ task_timeout=72
 - `GET/POST/PUT/DELETE /svr/openlist` 引擎管理（列表、子目录、增删改）
 - `GET/POST/PUT/DELETE /svr/job` 作业管理（列表、详情、手动执行、启用/禁用、中止、删除）
 - `GET/POST/PUT/DELETE /svr/notify` 通知配置（列表、增删改、测试）
-- `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）
+- `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）。支持参数 `apikey`（URL参数或Body参数），若服务端配置了 `WEBHOOK_APIKEY` 则必须提供且匹配。
 
 ## 排除项规则简单说明
 
