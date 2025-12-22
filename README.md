@@ -263,15 +263,15 @@ task_timeout=72
 
 | 变量 | 说明 | 示例 |
 |---|---|---|
-264.| `WEBHOOK_DELAY` | Webhook 延迟触发时间（秒） | `60` |
-265.| `WEBHOOK_APIKEY` | Webhook API Key，可选。设置后，Webhook 请求必须包含 `apikey` 字段且值匹配 | `123456` |
-266.| `WEBHOOK_OPENLIST_NAME` | Webhook 自动创建任务时使用的 OpenList 引擎备注名；若未配置或留空，默认使用第一个引擎 | `OpenList` |
-267.| `TVsource` | 电视剧源根 | `/media/电视剧` |
+| `WEBHOOK_DELAY` | Webhook 延迟触发时间（秒） | `60` |
+| `WEBHOOK_APIKEY` | Webhook API Key，可选。设置后，Webhook 请求必须包含 `apikey` 字段且值匹配 | `123456` |
+| `WEBHOOK_OPENLIST_NAME` | Webhook 自动创建任务时使用的 OpenList 引擎备注名；若未配置或留空，默认使用第一个引擎 | `OpenList` |
+| `TVsource` | 电视剧源根 | `/media/电视剧` |
 | `MOVsource` | 电影源根 | `/media/电影` |
-| `DST_TV_TARGETS` / `DST_MOV_TARGETS` | 优先同步根集合（原样使用），存在同名目录时仅同步到这里；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/shanct/电视剧` 或 `/shanct/电影` |
+| `DST_TV_TARGETS` `DST_MOV_TARGETS` | 优先同步根集合（原样使用），存在同名目录时仅同步到这里；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/shanct/电视剧` 或 `/shanct/电影` |
 | `SYNC_TV_TARGETS` | 电视剧同步目标根集合，用 `,;:` 分隔，支持 `{max}`；仅在末尾追加“名称(年份)” | 例如 `/115/videos/电视剧,/ODC/tv{max}/电视剧` 或 `/115/videos/tv,tv{max}/tv` |
 | `SYNC_MOV_TARGETS` | 电影同步目标根集合，支持 `{max}`；仅在末尾追加“名称(年份)” | 例如 `/115/videos/电影,/ODC/mov{max}/电影` 或 `/115/videos/mov,mov{max}/mov` |
-| `DST_REFRESH_TV` / `DST_REFRESH_MOV` | 当命中 `DST_*` 同步集合时使用的刷新集合；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/media/电视剧,/videos/电视剧` 或 `/media/电影,/videos/电影` |
+| `DST_REFRESH_TV` `DST_REFRESH_MOV` | 当命中 `DST_*` 同步集合时使用的刷新集合；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/media/电视剧,/videos/电视剧` 或 `/media/电影,/videos/电影` |
 | `SYNC_REFRESH_TV` | 当走 `SYNC_*` 同步集合时使用的刷新集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电视剧,/ODC/tv{max}/电视剧,/videos/电视剧` |
 | `SYNC_REFRESH_MOV` | 当走 `SYNC_*` 同步集合时使用的刷新集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电影,/ODC/mov{max}/电影,/videos/电影` |
 
