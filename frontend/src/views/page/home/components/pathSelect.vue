@@ -96,7 +96,7 @@
 					this.submitLoading = true;
 					try {
 						await openlistMkdir({
-							openlistId: this.openlistId,
+							id: this.openlistId,
 							path: this.cuPath + value
 						});
 						this.$message.success('创建成功');
