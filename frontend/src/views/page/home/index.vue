@@ -55,12 +55,12 @@
 							</div>
 						</div>
 						<template v-else-if="props.row.isCron == 1">
-							<div class="form-box-item" v-for="item in cronList">
+							<div class="form-box-item">
 								<div class="form-box-item-label">
-									{{item.label}}
+									cron表达式
 								</div>
 								<div class="form-box-item-value">
-									{{props.row[item.label] || '-'}}
+									{{[props.row.second, props.row.minute, props.row.hour, props.row.day, props.row.month, props.row.day_of_week].join(' ')}}
 								</div>
 							</div>
 						</template>
@@ -356,37 +356,6 @@
 					pageNum: 1
 				},
 				openlistList: [],
-				cronList: [{
-					label: 'year',
-					palce: '2024'
-				}, {
-					label: 'month',
-					palce: '1-12'
-				}, {
-					label: 'day',
-					palce: '1-31'
-				}, {
-					label: 'week',
-					palce: '1-53'
-				}, {
-					label: 'day_of_week',
-					palce: '0-6 or mon,tue,wed,thu,fri,sat,sun'
-				}, {
-					label: 'hour',
-					palce: '0-23'
-				}, {
-					label: 'minute',
-					palce: '0-59'
-				}, {
-					label: 'second',
-					palce: '0-59'
-				}, {
-					label: 'start_date',
-					palce: '2000-01-01'
-				}, {
-					label: 'end_date',
-					palce: '2040-12-31'
-				}],
 				cuIsSrc: false,
 				loading: false,
 				btnLoading: false,
@@ -522,6 +491,13 @@
 				this.excludeTmp = '';
 				this.editData = JSON.parse(JSON.stringify(row));
 				this.editData.dstPath = this.editData.dstPath.split(':');
+				if (this.editData.isCron == 1) {
+					const f = ['second', 'minute', 'hour', 'day', 'month', 'day_of_week'];
+					this.editData.cronExpr = f.map(k => {
+						const v = this.editData[k];
+						return v != null && String(v).trim() !== '' ? v : '*';
+					}).join(' ');
+				}
 				if (this.editData.exclude) {
 					this.editData.exclude = this.editData.exclude.split(':');
 				} else {
@@ -546,11 +522,9 @@
 					method: 0,
 					interval: 1440,
 					isCron: 0,
-					exclude: []
+					exclude: [],
+					cronExpr: ''
 				}
-				this.cronList.forEach(item => {
-					editData[item.label] = null;
-				})
 				this.editData = editData;
 				this.excludeTmp = '';
 				this.editShow = true;
