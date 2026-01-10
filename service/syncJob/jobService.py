@@ -79,6 +79,10 @@ def cleanJobInput(job):
     except Exception:
         # 解析失败时交由后续校验抛错
         pass
+    # 统一补齐缺失的 cron 相关字段，避免 SQL 命名绑定缺失
+    for k in ['year', 'month', 'day', 'week', 'day_of_week', 'hour', 'minute', 'second', 'start_date', 'end_date']:
+        if k not in job:
+            job[k] = None
     if job['isCron'] == 2 and job['enable'] != 1:
         job['enable'] = 1
     for key, value in job.items():

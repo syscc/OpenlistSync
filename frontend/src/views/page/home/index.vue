@@ -141,9 +141,11 @@
 			</el-table-column>
 		</el-table>
 		<div class="page">
-			<el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
-				:current-page="params.pageNum" :page-size="params.pageSize" :total="jobData.count"
-				layout="total, sizes, prev, pager, next, jumper" :page-sizes="[10, 20, 50, 100]">
+			<el-pagination
+				:current-page="params.pageNum"
+				:page-size="params.pageSize"
+				:total="jobData.count"
+				layout="total">
 			</el-pagination>
 		</div>
 		<el-dialog top="5vh" :close-on-click-modal="false" :visible.sync="editShow" :append-to-body="true"
@@ -352,7 +354,7 @@
 					count: 0
 				},
 				params: {
-					pageSize: 10,
+					pageSize: 100000,
 					pageNum: 1
 				},
 				openlistList: [],

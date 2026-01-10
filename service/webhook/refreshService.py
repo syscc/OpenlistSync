@@ -45,6 +45,14 @@ def _resolve_season_path(client, base_path):
         return f"{base_path}/Season {max(ss)}/"
     return base_path + '/'
 
+def _resolve_season_paths(client, base_path):
+    base_path = base_path.rstrip('/')
+    if re.search(r"/Season\s+\d+$", base_path):
+        return [base_path + '/']
+    ss = _list_seasons(client, base_path)
+    if ss:
+        return [f"{base_path}/Season {n}/" for n in sorted(ss)]
+    return [base_path + '/']
 
 def _find_max_dir(client, parent_dir, prefix):
     """
@@ -226,7 +234,10 @@ def refresh_after_task(job, status):
     # 解析 Season 并刷新
     resolved = []
     for base in base_paths:
-        resolved.append(_resolve_season_path(client, base) if is_tv else (base.rstrip('/') + '/'))
+        if is_tv:
+            resolved.extend(_resolve_season_paths(client, base))
+        else:
+            resolved.append(base.rstrip('/') + '/')
     ok_list = []
     fail_list = []
     for p in resolved:
