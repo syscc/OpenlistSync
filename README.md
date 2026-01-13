@@ -193,6 +193,7 @@ services:
       - SYNC_MOV_TARGETS=/115/videos/电影,/ODC/mov{max}/电影     # 回退电影同步集合；{max} → 自动匹配最大数字后缀目录
       - SYNC_REFRESH_TV=/115/videos/电视剧,/ODC/tv{max}/电视剧,/videos/电视剧 # SYNC 同步时的刷新集合
       - SYNC_REFRESH_MOV=/115/videos/电影,/ODC/mov{max}/电影,/videos/电影   # SYNC 同步时的刷新集合
+      - SECOND=true # 启用二级目录（从 webhook 文本“类别：xxx”解析为二级路径，电视剧与电影均支持）
     volumes:
       - ./data:/app/data
 ```
@@ -274,6 +275,7 @@ task_timeout=72
 | `DST_REFRESH_TV` `DST_REFRESH_MOV` | 当命中 `DST_*` 同步集合时使用的刷新集合；仅在末尾追加“名称(年份)”；支持 `,;:` 分隔 | 例如 `/media/电视剧,/videos/电视剧` 或 `/media/电影,/videos/电影` |
 | `SYNC_REFRESH_TV` | 当走 `SYNC_*` 同步集合时使用的刷新集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电视剧,/ODC/tv{max}/电视剧,/videos/电视剧` |
 | `SYNC_REFRESH_MOV` | 当走 `SYNC_*` 同步集合时使用的刷新集合（仅在末尾追加“名称(年份)”） | 例如 `/115/videos/电影,/ODC/mov{max}/电影,/videos/电影` |
+| `SECOND` | 启用二级目录（从 webhook 文本“类别：xxx”解析为二级路径）；开启后源与目标都将拼接该二级目录；电视剧与电影均支持 | `true` |
 
 - 占位符说明：`{max}` 占位符（支持任意层级）。语法：`前缀{max}`（如 `tv{max}`、`disk{max}`）。系统会自动扫描父目录下（如果未指定父目录则默认为根目录 `/`）以该前缀开头的所有子目录，并选择数字后缀最大的那个。例如：`/ODC/tv{max}/电视剧` 会扫描 `/ODC` 下的 `tv*`，若有 `tv1`~`tv9`，则替换为 `/ODC/tv9/电视剧`。
 - 源存在判定：`TVsource` 或 `MOVsource` 下存在 `名称(年份)` 目录才会创建作业。

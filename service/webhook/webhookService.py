@@ -66,6 +66,17 @@ def handleWebhook(req):
         return None
     remark = parse_tv_title_to_remark(title) or parse_tv_title_to_remark(text)
     
+    def parse_second_level(s):
+        if not s:
+            return None
+        m = re.search(r"类别[:：]\s*([^\n\r，,；;]+)", s)
+        if m:
+            val = m.group(1).strip()
+            # 清理可能的括号说明等
+            val = re.sub(r"\s+", " ", val)
+            return val if val else None
+        return None
+    
     if remark:
         delay = req.get('delay', None)
         def _read_env_file(key):
@@ -168,13 +179,23 @@ def handleWebhook(req):
                     tv_src = os.getenv('TVsource') or ''
                     mov_src = os.getenv('MOVsource') or ''
                     media_root = tv_src if tv_flag else mov_src
+                    # 二级目录开关
+                    second_level_enable = (os.getenv('SECOND', 'false').lower() in ['1','true','yes'])
+                    second_level = parse_second_level(title or '') or parse_second_level(text or '')
                     has_src = False
                     
                     # 尝试查找源目录，支持半角冒号转全角冒号
                     final_remark = remark
                     if client is not None:
                         try:
-                            dirs = client.filePathList(media_root)
+                            # 当启用二级目录且存在二级名称时，优先在二级目录下查找
+                            root_for_list = media_root
+                            if second_level_enable and second_level:
+                                try:
+                                    root_for_list = re.sub(r"/{2,}", "/", f"{media_root.rstrip('/')}/{second_level}")
+                                except Exception:
+                                    root_for_list = media_root
+                            dirs = client.filePathList(root_for_list)
                             names = [d['path'] for d in dirs]
                             if remark in names:
                                 has_src = True
@@ -268,7 +289,11 @@ def handleWebhook(req):
 
                         return re.sub(r"(^|.*?/)([^/]*)\{max\}", max_replacer, path_str)
 
-                    srcPath = f"{media_root.rstrip('/')}/{remark}/"
+                    # 组装源目录（支持二级目录）
+                    if second_level_enable and second_level:
+                        srcPath = f"{media_root.rstrip('/')}/{second_level}/{remark}/"
+                    else:
+                        srcPath = f"{media_root.rstrip('/')}/{remark}/"
                     dst_env = os.getenv('DST_TV_TARGETS') if tv_flag else os.getenv('DST_MOV_TARGETS')
                     dsts = []
                     if dst_env and client is not None:
@@ -280,10 +305,17 @@ def handleWebhook(req):
                                 if not base.startswith('/'):
                                     base = '/' + base
                                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
-                                exists_dirs = client.filePathList(base)
+                                # 二级目录下的存在性检测
+                                base_for_list = base
+                                if second_level_enable and second_level:
+                                    base_for_list = f"{base}/{second_level}"
+                                exists_dirs = client.filePathList(base_for_list)
                                 names = [d['path'] for d in exists_dirs]
                                 if remark in names:
-                                    dsts = [f"{base}/{remark}/"]
+                                    if second_level_enable and second_level:
+                                        dsts = [f"{base}/{second_level}/{remark}/"]
+                                    else:
+                                        dsts = [f"{base}/{remark}/"]
                                     break
                         except Exception:
                             pass
@@ -297,7 +329,10 @@ def handleWebhook(req):
                                 if not base.startswith('/'):
                                     base = '/' + base
                                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
-                                dsts.append(f"{base}/{remark}/")
+                                if second_level_enable and second_level:
+                                    dsts.append(f"{base}/{second_level}/{remark}/")
+                                else:
+                                    dsts.append(f"{base}/{remark}/")
                         else:
                             try:
                                 notify_list = notifyService.getNotifyList(True)

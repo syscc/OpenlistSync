@@ -136,6 +136,18 @@ def refresh_after_task(job, status):
     logger.info(f"Refresh context: is_tv={is_tv}, src={src}, dsts={dsts}")
     base_paths = []
     name = remark
+    # 解析二级目录：从源路径中提取根之后到剧名之前的第一级目录
+    second_level = None
+    try:
+        root_norm = tv_src_norm if is_tv else mov_src_norm
+        if root_norm:
+            tail = src_norm[len(root_norm):]
+            tail = tail.lstrip('/')
+            segs = [s for s in tail.split('/') if s]
+            if segs and segs[0] != name:
+                second_level = segs[0]
+    except Exception:
+        second_level = None
     dedup = []
     seen = set()
     tv_src = os.getenv('TVsource') or ''
@@ -169,6 +181,8 @@ def refresh_after_task(job, status):
         raw_refresh_paths = _expand_targets(env_refresh, client)
         for base in raw_refresh_paths:
             path = f"{base}/{name}"
+            if second_level:
+                path = f"{base}/{second_level}/{name}"
             if path not in seen:
                 dedup.append(path)
                 seen.add(path)
@@ -190,6 +204,8 @@ def refresh_after_task(job, status):
             if base:
                 base = re.sub(r"/{2,}", "/", base).rstrip('/')
                 path = f"{base}/{name}"
+                if second_level:
+                    path = f"{base}/{second_level}/{name}"
                 if path not in seen:
                     dedup.append(path)
                     seen.add(path)
