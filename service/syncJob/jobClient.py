@@ -18,6 +18,7 @@ from mapper import jobMapper
 from service.openlist import openlistService
 from service.syncJob import taskService
 from service.notify import notifyService
+from service.system import configService
 
 
 class CopyItem:
@@ -349,10 +350,16 @@ class JobTask:
         同步方法
         """
         srcPath = self.job['srcPath']
+        excludeRules = []
+        globalExclude = configService.getGlobalExclude()
         jobExclude = self.job['exclude']
-        spec = None
+        if globalExclude is not None:
+            excludeRules.extend([item.strip() for item in globalExclude.split(':') if item.strip()])
         if jobExclude is not None:
-            spec = PathSpec.from_lines(GitWildMatchPattern, jobExclude.split(':'))
+            excludeRules.extend([item.strip() for item in jobExclude.split(':') if item.strip()])
+        spec = None
+        if excludeRules:
+            spec = PathSpec.from_lines(GitWildMatchPattern, excludeRules)
         if not srcPath.endswith('/'):
             srcPath = srcPath + '/'
         dstPathList = self.job['dstPath'].split(':')

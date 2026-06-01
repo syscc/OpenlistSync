@@ -2,6 +2,8 @@
 	<div class="taskDetail">
 		<div class="top-box">
 			<div style="display: flex; align-items: center;">
+				<el-button type="primary" icon="el-icon-caret-right" @click="runJob" size="small"
+					:loading="btnLoading" style="margin-right: 12px;">手动执行</el-button>
 				<el-button type="primary" icon="el-icon-back" @click="goback" size="small"
 					style="margin-right: 12px;">返回</el-button>
 				<el-select v-model="params.status" placeholder="筛选状态" @change="getTaskItemList" clearable
@@ -26,7 +28,8 @@
 
 <script>
 	import {
-		jobGetTaskItem
+		jobGetTaskItem,
+		jobPut
 	} from "@/api/job";
 	import taskItemStatus from '@/utils/taskItemStatus';
 	import menuRefresh from './components/menuRefresh';
@@ -52,12 +55,16 @@
 				loading: false,
 				btnLoading: false,
 				taskId: null,
+				jobId: null,
 				taskItemStatusList: []
 			};
 		},
 		created() {
 			if (this.$route.query.hasOwnProperty('taskId')) {
 				this.params.taskId = this.$route.query.taskId;
+			}
+			if (this.$route.query.hasOwnProperty('jobId')) {
+				this.jobId = this.$route.query.jobId;
 			}
 			this.taskItemStatusList = taskItemStatus;
 		},
@@ -76,10 +83,32 @@
 							taskItemList: res.data.taskItemList,
 							count: res.data.count
 						};
+						if (res.data.jobId != null) {
+							this.jobId = res.data.jobId;
+						}
 					}).catch(err => {
 						this.loading = false;
 					})
 				}
+			},
+			runJob() {
+				if (this.jobId == null) {
+					this.$message.error("未找到所属作业，无法手动执行");
+					return;
+				}
+				this.btnLoading = true;
+				jobPut({
+					id: this.jobId,
+					pause: null
+				}).then(res => {
+					this.btnLoading = false;
+					this.$message({
+						message: res.msg,
+						type: 'success'
+					});
+				}).catch(err => {
+					this.btnLoading = false;
+				})
 			},
 			goback() {
 				this.$router.go(-1);

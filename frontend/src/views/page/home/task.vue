@@ -1,7 +1,11 @@
 <template>
 	<div class="task" :style="`min-height: calc(320px + ${currentHeight}px)`">
 		<div class="top-box">
-			<el-button type="primary" icon="el-icon-back" size="small" @click="goback">返回</el-button>
+			<div class="top-box-left">
+				<el-button type="primary" icon="el-icon-back" size="small" @click="goback">返回</el-button>
+				<el-button type="primary" icon="el-icon-caret-right" size="small" @click="runJob"
+					:loading="btnLoading">手动执行</el-button>
+			</div>
 			<div class="top-box-title">作业详情</div>
 			<menuRefresh :loading="loading" :autoRefresh="false" :needShow="1" @getData="getTaskList"></menuRefresh>
 		</div>
@@ -52,7 +56,7 @@
 						<el-button type="danger" icon="el-icon-delete" @click="delTask(scope.row.id)"
 							:loading="btnLoading" :disabled="scope.row.status == 1"
 							size="mini">{{scope.row.status == 1 ? '暂不能' : ''}}删除</el-button>
-						<el-button type="primary" icon="el-icon-view" @click="detail(scope.row.id)"
+						<el-button type="primary" icon="el-icon-view" @click="detail(scope.row)"
 							:loading="btnLoading" size="mini" v-if="scope.row.allNum != 0">详情</el-button>
 					</template>
 				</el-table-column>
@@ -77,7 +81,8 @@
 <script>
 	import {
 		jobGetTask,
-		jobDeleteTask
+		jobDeleteTask,
+		jobPut
 	} from "@/api/job";
 	import menuRefresh from './components/menuRefresh';
 	import taskCurrent from './components/taskCurrent';
@@ -141,13 +146,33 @@
 					}).catch(err => {
 						this.btnLoading = false;
 					})
-				});
+					});
+				},
+			runJob() {
+				if (this.params.id == null) {
+					this.$message.error("未找到所属作业，无法手动执行");
+					return;
+				}
+				this.btnLoading = true;
+				jobPut({
+					id: this.params.id,
+					pause: null
+				}).then(res => {
+					this.btnLoading = false;
+					this.$message({
+						message: res.msg,
+						type: 'success'
+					});
+				}).catch(err => {
+					this.btnLoading = false;
+				})
 			},
-			detail(taskId) {
+			detail(row) {
 				this.$router.push({
 					path: '/home/task/detail',
 					query: {
-						taskId
+						taskId: row.id,
+						jobId: row.jobId || this.params.id
 					}
 				})
 			},
@@ -178,13 +203,19 @@
 		padding: 16px;
 		box-sizing: border-box;
 
-		.top-box {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			margin-bottom: 16px;
+			.top-box {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 16px;
 
-			.top-box-title {
+				.top-box-left {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+				}
+
+				.top-box-title {
 				font-weight: bold;
 			}
 		}

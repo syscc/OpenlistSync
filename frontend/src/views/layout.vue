@@ -52,6 +52,11 @@
 						index: '/home',
 						title: '作业管理',
 						icon: 'data-analysis'
+					},
+					{
+						index: '/globalExclude',
+						title: '全局排除项',
+						icon: 'document-delete'
 					},{ 
 						index: '/engine',
 						title: '引擎管理',

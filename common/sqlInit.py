@@ -4,7 +4,7 @@ from common import sqlBase
 
 @sqlBase.connect_sql
 def init_sql(conn):
-    cuVersion = 250609
+    cuVersion = 250610
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE name='user_list'")
     passwd = None
@@ -87,6 +87,11 @@ def init_sql(conn):
                        "params text,"               # 以json字符串存储参数
                        "createTime integer DEFAULT (strftime('%s', 'now'))"
                        ")")
+        cursor.execute("create table system_config("
+                       "key text primary key,"
+                       "value text,"
+                       "updateTime integer DEFAULT (strftime('%s', 'now'))"
+                       ")")
         conn.commit()
     else:
         try:
@@ -142,6 +147,12 @@ def init_sql(conn):
                     cursor.execute("alter table openlist_list rename to list")
                 except Exception:
                     pass
+            if sqlVersion < 250610:
+                cursor.execute("create table if not exists system_config("
+                               "key text primary key,"
+                               "value text,"
+                               "updateTime integer DEFAULT (strftime('%s', 'now'))"
+                               ")")
             cursor.execute(f"update user_list set sqlVersion={cuVersion}")
             conn.commit()
     cursor.close()

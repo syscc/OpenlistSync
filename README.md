@@ -281,6 +281,57 @@ task_timeout=72
 - 源存在判定：`TVsource` 或 `MOVsource` 下存在 `名称(年份)` 目录才会创建作业。
 
 
+## 项目目录
+
+```text
+OpenlistSync/
+├── main.py                         # Tornado 后端入口，注册 Web/API/静态资源路由
+├── requirements.txt                # Python 运行依赖
+├── Dockerfile                      # 默认 Docker 镜像构建入口
+├── docker-compose.yaml             # Docker Compose 示例
+├── dockerfiles/                    # 多平台/不同构建方式的 Dockerfile
+├── common/                         # 通用配置、数据库连接、日志、语言与工具方法
+│   ├── config.py                   # 读取 data/config.ini、环境变量与默认配置
+│   ├── sqlBase.py                  # SQLite 基础访问封装
+│   └── sqlInit.py                  # 数据库初始化与版本迁移
+├── controller/                     # Tornado API 控制器
+│   ├── baseController.py           # 登录态校验与统一响应封装
+│   ├── jobController.py            # 作业、任务与引擎接口
+│   ├── notifyController.py         # 通知配置接口
+│   ├── systemController.py         # 用户、语言、系统配置接口
+│   └── webhookController.py        # Webhook 入口
+├── mapper/                         # SQLite 数据访问层
+│   ├── jobMapper.py                # 作业与任务数据
+│   ├── notifyMapper.py             # 通知配置数据
+│   ├── openlistMapper.py           # OpenList 引擎数据
+│   ├── systemConfigMapper.py       # 系统配置数据，如全局排除项
+│   └── userMapper.py               # 用户数据
+├── service/                        # 业务逻辑层
+│   ├── openlist/                   # OpenList API 客户端与引擎管理
+│   ├── syncJob/                    # 作业调度、同步执行、任务统计
+│   ├── notify/                     # 通知发送
+│   ├── system/                     # 启动初始化、日志清理、用户与系统配置
+│   └── webhook/                    # Webhook 解析、自动建作业与刷新
+├── frontend/                       # Vue 2 前端源码
+│   ├── public/                     # 前端公共静态资源
+│   ├── src/
+│   │   ├── api/                    # 前端 API 封装
+│   │   ├── router/                 # 前端路由
+│   │   ├── store/                  # Vuex 状态
+│   │   ├── utils/                  # 前端工具与枚举
+│   │   └── views/                  # 页面与组件，含作业管理、全局排除项、系统设置等
+│   ├── package.json                # 前端依赖与脚本
+│   └── vue.config.js               # Vue CLI 开发服务与代理配置
+├── README/                         # README 引用的截图资源
+├── doc/                            # 文档与历史 changelog
+├── tests/                          # 手动验证脚本
+└── data/                           # 运行时数据目录，本地生成，不建议提交
+    ├── openlistsync.db             # SQLite 数据库
+    ├── config.ini                  # 可选运行配置
+    ├── secret.key                  # Cookie 签名密钥
+    └── log/                        # 运行日志
+```
+
 
 ## 接口概览
 

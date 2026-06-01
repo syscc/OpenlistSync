@@ -25,6 +25,7 @@ def make_app():
         (r"/svr/noAuth/login", systemController.Login),
         (r"/svr/user", systemController.User),
         (r"/svr/language", systemController.Language),
+        (r"/svr/system/config", systemController.Config),
         (r"/svr/openlist", jobController.OpenList),
         (r"/svr/job", jobController.Job),
         (r"/svr/notify", notifyController.Notify),

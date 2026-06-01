@@ -141,5 +141,9 @@ def getTaskItemList(req):
     :return:
     """
     res = jobMapper.getJobTaskItemList(req)
+    try:
+        res['jobId'] = jobMapper.getJobByTaskId(req['taskId'])['id']
+    except Exception:
+        res['jobId'] = None
     res['taskItemList'] = res.pop('list')
     return res

@@ -89,6 +89,18 @@ const routes = [{
 				letfIndex: '/setting'
 			}
 		}]
+	},
+	{
+		path: '/globalExclude',
+		component: Layout,
+		children: [{
+			path: '',
+			component: () => import('@/views/page/globalExclude/index'),
+			name: '全局排除项',
+			meta: {
+				letfIndex: '/globalExclude'
+			}
+		}]
 	}
 ]
 

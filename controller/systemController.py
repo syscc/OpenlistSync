@@ -3,7 +3,7 @@ import json
 from common.LNG import language
 from common.config import getConfig
 from controller.baseController import BaseHandler, handle_request, cookieName
-from service.system import userService
+from service.system import configService, userService
 
 
 class Login(BaseHandler):
@@ -47,3 +47,13 @@ class Language(BaseHandler):
     @handle_request
     def post(self, req):
         language(req['language'])
+
+
+class Config(BaseHandler):
+    @handle_request
+    def get(self, req):
+        return configService.getConfig()
+
+    @handle_request
+    def post(self, req):
+        return configService.updateConfig(req)
