@@ -324,7 +324,6 @@ OpenlistSync/
 │   └── vue.config.js               # Vue CLI 开发服务与代理配置
 ├── README/                         # README 引用的截图资源
 ├── doc/                            # 文档与历史 changelog
-├── tests/                          # 手动验证脚本
 └── data/                           # 运行时数据目录，本地生成，不建议提交
     ├── openlistsync.db             # SQLite 数据库
     ├── config.ini                  # 可选运行配置
