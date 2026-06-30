@@ -5,7 +5,7 @@
 				<div :class="'left-top-logo-in ' + (isCollapse ? 'isCollapse' : '')" @click="toIndex"></div>
 			</div>
 			<el-menu :default-active="vuex_letfIndex" :router="true" :collapse="isCollapse" class="lay-left-menu">
-				<el-menu-item :index="item.index" v-for="item in menuList">
+				<el-menu-item :index="item.index" v-for="item in menuList" :key="item.index">
 					<i :class="`el-icon-${item.icon}`"></i>
 					<span slot="title">{{item.title}}</span>
 				</el-menu-item>
@@ -52,6 +52,11 @@
 						index: '/home',
 						title: '作业管理',
 						icon: 'data-analysis'
+					},
+					{
+						index: '/mediaScraping',
+						title: '媒体名字刮削',
+						icon: 'video-camera'
 					},
 					{
 						index: '/globalExclude',

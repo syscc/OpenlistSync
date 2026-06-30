@@ -6,7 +6,7 @@ import sys
 from tornado.web import Application, RequestHandler, StaticFileHandler
 
 from common.config import getConfig
-from controller import systemController, jobController, notifyController, webhookController
+from controller import systemController, jobController, notifyController, webhookController, mediaScrapingController
 from service.system import onStart
 
 
@@ -26,6 +26,7 @@ def make_app():
         (r"/svr/user", systemController.User),
         (r"/svr/language", systemController.Language),
         (r"/svr/system/config", systemController.Config),
+        (r"/svr/media/scraping", mediaScrapingController.MediaScraping),
         (r"/svr/openlist", jobController.OpenList),
         (r"/svr/job", jobController.Job),
         (r"/svr/notify", notifyController.Notify),
@@ -39,8 +40,8 @@ def make_app():
 async def main():
     app = make_app()
     logger = logging.getLogger()
-    app.listen(server['port'])
-    successMsg = f"启动成功_/_Running at http://127.0.0.1:{server['port']}/"
+    app.listen(server['port'], address='0.0.0.0')
+    successMsg = f"启动成功_/_Running at http://0.0.0.0:{server['port']}/"
     logger.critical(successMsg)
     await asyncio.Event().wait()
 

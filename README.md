@@ -100,10 +100,6 @@
 
 
 ## 须知
-
-> **注意：v0.0.6 版本数据库不兼容 ＜v0.0.5**
-> 本版本（v0.0.6）进行了大规模重构，移除了对旧版数据库（alist相关表名）的兼容支持。如果您从 v0.0.5 升级，需要手动处理数据或删除旧数据库文件（`data/openlistsync.db`）重新配置。
-
 > **重要**
 > 使用本工具前你必须了解并且会使用 [OpenList](https://doc.oplist.org/)；本工具没有集成 OpenList，你需要额外启动 OpenList
 
@@ -145,12 +141,37 @@
 * 完善的日志，所有错误都会被记录
 * 引擎管理，可以自由增删改查`OpenList/AList`
 * 作业管理，可以新增/删除/启用/禁用/编辑/手动执行作业
+* 媒体名字刮削，可以复用已配置的 OpenList 引擎，统一配置默认引擎、TMDb、命名模板与改名线程，按 MoviePilot 风格浏览目录、搜索/填写 TMDb ID、预览命名并后台执行媒体目录/文件命名整理；支持根目录最后重命名、强制刷新缓存、任务进度、终止任务、手动执行历史任务和保留重命名日志
 * 支持排除项规则，可以排除指定目录或文件不同步
 * 仅新增、全同步、移动三种模式
 * 定时同步支持间隔、`cron`、手动调用
 * 同步进度、总体进度、同步速度、实时同步文件、预估时间等实时可视化查看
 * 存储可控，合理配置任务记录与日志保留天数，可以控制本程序所占用存储在可控范围内
 * 支持钉钉群机器人或server酱通知，可在任务成功或失败后发送通知
+
+## 媒体名字刮削
+
+`媒体名字刮削` 菜单用于对 OpenList 中的电影或电视剧目录进行命名整理。它不会新建 OpenList 引擎，而是复用 `引擎管理` 中已经配置好的 OpenList；刮削相关参数统一在 `引擎管理 -> 刮削配置` 中维护。
+
+刮削配置包含：
+
+- 默认打开的 OpenList 引擎；
+- TMDb API Key 或 Bearer Token、语言、成人内容开关和超时时间；
+- 电影/电视剧命名模板、媒体扩展名、自定义词、制作组、自定义标签；
+- 改名线程数、是否允许覆盖、是否刷新目录缓存、重命名日志保留数量。
+
+使用流程：
+
+1. 在左侧浏览或粘贴 OpenList 路径，选择需要整理的媒体目录。
+2. 在右侧选择类型、递归、处理数量，可直接填写 TMDb ID；也可以点击 TMDb ID 输入框右侧搜索按钮，按名称搜索电影或电视剧，选中结果后自动回填 TMDb ID。
+3. 点击 `预览命名` 查看原路径、命名后路径、目录重命名和目标冲突。
+4. 确认无误后点击 `应用命名`，任务会在后台执行；可在 `重命名任务` 中查看进度、进入详情、终止任务或手动执行历史任务。
+
+执行逻辑：
+
+- 文件先改名并移动到季目录，根目录最后再重命名，避免根目录提前变化导致后续文件路径失效。
+- 手动执行历史任务时会强制刷新源/目标根目录及其父目录缓存，减少 OpenList 缓存导致的误判。
+- 使用预览结果执行时不会重复为每个文件再次查询 TMDb，优先按预览计划执行。
 
 ## 使用方法
 
@@ -297,16 +318,21 @@ OpenlistSync/
 ├── controller/                     # Tornado API 控制器
 │   ├── baseController.py           # 登录态校验与统一响应封装
 │   ├── jobController.py            # 作业、任务与引擎接口
+│   ├── mediaScrapingController.py  # 媒体名字刮削配置、浏览、预览、执行与任务接口
 │   ├── notifyController.py         # 通知配置接口
 │   ├── systemController.py         # 用户、语言、系统配置接口
 │   └── webhookController.py        # Webhook 入口
 ├── mapper/                         # SQLite 数据访问层
 │   ├── jobMapper.py                # 作业与任务数据
+│   ├── mediaScrapingMapper.py      # 媒体名字刮削任务、执行日志与明细数据
 │   ├── notifyMapper.py             # 通知配置数据
 │   ├── openlistMapper.py           # OpenList 引擎数据
 │   ├── systemConfigMapper.py       # 系统配置数据，如全局排除项
 │   └── userMapper.py               # 用户数据
+├── media_tools/                    # 媒体整理核心工具
+│   └── openlist_media_renamer.py   # OpenList 媒体识别、TMDb 查询、命名预览与重命名执行
 ├── service/                        # 业务逻辑层
+│   ├── mediaScraping/              # 媒体名字刮削配置、预览、后台任务、日志与中止逻辑
 │   ├── openlist/                   # OpenList API 客户端与引擎管理
 │   ├── syncJob/                    # 作业调度、同步执行、任务统计
 │   ├── notify/                     # 通知发送
@@ -319,7 +345,7 @@ OpenlistSync/
 │   │   ├── router/                 # 前端路由
 │   │   ├── store/                  # Vuex 状态
 │   │   ├── utils/                  # 前端工具与枚举
-│   │   └── views/                  # 页面与组件，含作业管理、全局排除项、系统设置等
+│   │   └── views/                  # 页面与组件，含作业管理、媒体名字刮削、全局排除项、系统设置等
 │   ├── package.json                # 前端依赖与脚本
 │   └── vue.config.js               # Vue CLI 开发服务与代理配置
 ├── README/                         # README 引用的截图资源
@@ -337,6 +363,7 @@ OpenlistSync/
 - `GET/POST/PUT/DELETE /svr/openlist` 引擎管理（列表、子目录、增删改）
 - `GET/POST/PUT/DELETE /svr/job` 作业管理（列表、详情、手动执行、启用/禁用、中止、删除）
 - `GET/POST/PUT/DELETE /svr/notify` 通知配置（列表、增删改、测试）
+- `GET/POST/PUT /svr/media/scraping` 媒体名字刮削（配置、浏览 OpenList 路径、TMDb 搜索、预览命名、后台执行、任务列表、任务详情、终止与手动执行）
 - `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）。支持参数 `apikey`（URL参数或Body参数），若服务端配置了 `WEBHOOK_APIKEY` 则必须提供且匹配。
 
 ## 排除项规则简单说明

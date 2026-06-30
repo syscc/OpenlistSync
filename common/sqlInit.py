@@ -4,7 +4,7 @@ from common import sqlBase
 
 @sqlBase.connect_sql
 def init_sql(conn):
-    cuVersion = 250610
+    cuVersion = 260631
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE name='user_list'")
     passwd = None
@@ -92,6 +92,62 @@ def init_sql(conn):
                        "value text,"
                        "updateTime integer DEFAULT (strftime('%s', 'now'))"
                        ")")
+        cursor.execute("create table media_scraping_job("
+                       "id integer primary key autoincrement,"
+                       "groupKey text unique,"
+                       "taskName text,"
+                       "path text,"
+                       "openlistId integer,"
+                       "openlistName text,"
+                       "request text,"
+                       "latestTaskId integer,"
+                       "status integer DEFAULT 1,"
+                       "total integer DEFAULT 0,"
+                       "changed integer DEFAULT 0,"
+                       "successNum integer DEFAULT 0,"
+                       "failNum integer DEFAULT 0,"
+                       "skipNum integer DEFAULT 0,"
+                       "elapsed real,"
+                       "updateTime integer,"
+                       "createTime integer DEFAULT (strftime('%s', 'now'))"
+                       ")")
+        cursor.execute("create table media_scraping_task("
+                       "id integer primary key autoincrement,"
+                       "jobId integer,"
+                       "taskName text,"
+                       "path text,"
+                       "openlistId integer,"
+                       "openlistName text,"
+                       "status integer DEFAULT 1,"
+                       "apply integer DEFAULT 1,"
+                       "usedPreviewPlans integer DEFAULT 0,"
+                       "total integer DEFAULT 0,"
+                       "changed integer DEFAULT 0,"
+                       "successNum integer DEFAULT 0,"
+                       "failNum integer DEFAULT 0,"
+                       "skipNum integer DEFAULT 0,"
+                       "elapsed real,"
+                       "rootRenames text,"
+                       "stdout text,"
+                       "stderr text,"
+                       "errMsg text,"
+                       "request text,"
+                       "updateTime integer,"
+                       "createTime integer DEFAULT (strftime('%s', 'now'))"
+                       ")")
+        cursor.execute("create table media_scraping_task_item("
+                       "id integer primary key autoincrement,"
+                       "taskId integer,"
+                       "srcPath text,"
+                       "targetPath text,"
+                       "status integer DEFAULT 0,"
+                       "title text,"
+                       "year text,"
+                       "season text,"
+                       "episode text,"
+                       "errMsg text,"
+                       "createTime integer DEFAULT (strftime('%s', 'now'))"
+                       ")")
         conn.commit()
     else:
         try:
@@ -153,6 +209,97 @@ def init_sql(conn):
                                "value text,"
                                "updateTime integer DEFAULT (strftime('%s', 'now'))"
                                ")")
+            if sqlVersion < 260629:
+                cursor.execute("create table if not exists media_scraping_job("
+                               "id integer primary key autoincrement,"
+                               "groupKey text unique,"
+                               "taskName text,"
+                               "path text,"
+                               "openlistId integer,"
+                               "openlistName text,"
+                               "request text,"
+                               "latestTaskId integer,"
+                               "status integer DEFAULT 1,"
+                               "total integer DEFAULT 0,"
+                               "changed integer DEFAULT 0,"
+                               "successNum integer DEFAULT 0,"
+                               "failNum integer DEFAULT 0,"
+                               "skipNum integer DEFAULT 0,"
+                               "elapsed real,"
+                               "updateTime integer,"
+                               "createTime integer DEFAULT (strftime('%s', 'now'))"
+                               ")")
+                cursor.execute("create table if not exists media_scraping_task("
+                               "id integer primary key autoincrement,"
+                               "jobId integer,"
+                               "taskName text,"
+                               "path text,"
+                               "openlistId integer,"
+                               "openlistName text,"
+                               "status integer DEFAULT 1,"
+                               "apply integer DEFAULT 1,"
+                               "usedPreviewPlans integer DEFAULT 0,"
+                               "total integer DEFAULT 0,"
+                               "changed integer DEFAULT 0,"
+                               "successNum integer DEFAULT 0,"
+                               "failNum integer DEFAULT 0,"
+                               "skipNum integer DEFAULT 0,"
+                               "elapsed real,"
+                               "rootRenames text,"
+                               "stdout text,"
+                               "stderr text,"
+                               "errMsg text,"
+                               "request text,"
+                               "updateTime integer,"
+                               "createTime integer DEFAULT (strftime('%s', 'now'))"
+                               ")")
+                cursor.execute("create table if not exists media_scraping_task_item("
+                               "id integer primary key autoincrement,"
+                               "taskId integer,"
+                               "srcPath text,"
+                               "targetPath text,"
+                               "status integer DEFAULT 0,"
+                               "title text,"
+                               "year text,"
+                               "season text,"
+                               "episode text,"
+                               "errMsg text,"
+                               "createTime integer DEFAULT (strftime('%s', 'now'))"
+                               ")")
+            if sqlVersion < 260630:
+                for sql in [
+                    "alter table media_scraping_task add column taskName text",
+                    "alter table media_scraping_task add column request text",
+                    "alter table media_scraping_task add column updateTime integer",
+                ]:
+                    try:
+                        cursor.execute(sql)
+                    except Exception:
+                        pass
+            if sqlVersion < 260631:
+                cursor.execute("create table if not exists media_scraping_job("
+                               "id integer primary key autoincrement,"
+                               "groupKey text unique,"
+                               "taskName text,"
+                               "path text,"
+                               "openlistId integer,"
+                               "openlistName text,"
+                               "request text,"
+                               "latestTaskId integer,"
+                               "status integer DEFAULT 1,"
+                               "total integer DEFAULT 0,"
+                               "changed integer DEFAULT 0,"
+                               "successNum integer DEFAULT 0,"
+                               "failNum integer DEFAULT 0,"
+                               "skipNum integer DEFAULT 0,"
+                               "elapsed real,"
+                               "updateTime integer,"
+                               "createTime integer DEFAULT (strftime('%s', 'now'))"
+                               ")")
+                try:
+                    cursor.execute("alter table media_scraping_task add column jobId integer")
+                except Exception:
+                    pass
             cursor.execute(f"update user_list set sqlVersion={cuVersion}")
             conn.commit()
     cursor.close()

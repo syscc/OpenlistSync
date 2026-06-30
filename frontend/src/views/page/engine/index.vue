@@ -1,8 +1,14 @@
 <template>
 	<div class="engine">
-		<div class="loading-box content-none-data" v-loading="true" v-if="getLoading">加载中</div>
-		<div v-else class="card-box">
-			<div class="card-item" v-for="item in openlistList">
+		<div class="engine-top">
+			<el-select v-model="configMode" size="small" class="config-mode">
+				<el-option label="OpenList" value="openlist"></el-option>
+				<el-option label="刮削配置" value="mediaScraping"></el-option>
+			</el-select>
+		</div>
+		<div class="loading-box content-none-data" v-loading="true" v-if="getLoading && configMode === 'openlist'">加载中</div>
+		<div v-else-if="configMode === 'openlist'" class="card-box">
+			<div class="card-item" v-for="item in openlistList" :key="item.id">
 				<div class="card-item-top">
 					<el-image src="/logo/logo.svg" fit="contain" style="width: 60px;height: 60px;"></el-image>
 					<div style="margin-left: 12px;">
@@ -47,6 +53,84 @@
 				</span>
 			</el-dialog>
 		</div>
+		<div v-else class="scraping-config">
+			<el-form label-width="116px" size="small">
+				<div class="config-block">
+					<div class="block-title">默认引擎</div>
+					<el-form-item label="OpenList">
+						<el-select v-model="mediaConfig.defaultOpenlistId" filterable placeholder="选择默认打开的 OpenList 引擎" class="config-width">
+							<el-option v-for="item in openlistList" :key="item.id" :label="item.remark || item.url" :value="item.id">
+								<span>{{item.remark || item.url}}</span>
+								<span class="option-url">{{item.url}}</span>
+							</el-option>
+						</el-select>
+					</el-form-item>
+				</div>
+				<div class="config-block">
+					<div class="block-title">TMDb</div>
+					<el-form-item label="API Key">
+						<el-input v-model="mediaConfig.tmdbApiKey" class="config-width" show-password></el-input>
+					</el-form-item>
+					<el-form-item label="Bearer Token">
+						<el-input v-model="mediaConfig.tmdbBearerToken" class="config-width" show-password></el-input>
+					</el-form-item>
+					<el-form-item label="语言">
+						<el-input v-model="mediaConfig.tmdbLanguage" class="short-width"></el-input>
+					</el-form-item>
+					<el-form-item label="匹配选项">
+						<el-checkbox v-model="mediaConfig.tmdbRequired">必须配置 TMDb</el-checkbox>
+						<el-checkbox v-model="mediaConfig.tmdbIncludeAdult">包含成人内容</el-checkbox>
+					</el-form-item>
+				</div>
+				<div class="config-block">
+					<div class="block-title">命名参数</div>
+					<el-form-item label="运行选项">
+						<el-checkbox v-model="mediaConfig.refresh">刷新目录缓存</el-checkbox>
+						<el-checkbox v-model="mediaConfig.overwrite">允许覆盖</el-checkbox>
+					</el-form-item>
+					<el-form-item label="处理数量">
+						<el-input-number v-model="mediaConfig.limit" :min="0"></el-input-number>
+						<span class="tip-text">0 表示不限制</span>
+					</el-form-item>
+					<el-form-item label="改名线程">
+						<el-input-number v-model="mediaConfig.renameThreads" :min="1" :max="16"></el-input-number>
+						<span class="tip-text">默认 2，根目录仍最后单线程改名</span>
+					</el-form-item>
+					<el-form-item label="重命名日志">
+						<el-input-number v-model="mediaConfig.renameLogLimit" :min="0" :max="1000"></el-input-number>
+						<span class="tip-text">保留最近多少次，0 表示不清理</span>
+					</el-form-item>
+					<el-form-item label="超时">
+						<el-input-number v-model="mediaConfig.openlistTimeout" :min="1" :step="5"></el-input-number>
+						<span class="tip-text">OpenList 秒</span>
+						<el-input-number v-model="mediaConfig.tmdbTimeout" :min="1" :step="5"></el-input-number>
+						<span class="tip-text">TMDb 秒</span>
+					</el-form-item>
+					<el-form-item label="媒体扩展名">
+						<el-input v-model="extensionsText" class="config-width" placeholder=".mkv,.mp4,.ts"></el-input>
+					</el-form-item>
+				</div>
+				<div class="config-block">
+					<div class="block-title">模板与 MoviePilot</div>
+					<el-form-item label="电影模板">
+						<el-input v-model="mediaConfig.movieTemplate" type="textarea" :rows="3" class="config-width"></el-input>
+					</el-form-item>
+					<el-form-item label="电视剧模板">
+						<el-input v-model="mediaConfig.tvTemplate" type="textarea" :rows="4" class="config-width"></el-input>
+					</el-form-item>
+					<el-form-item label="自定义词">
+						<el-input v-model="mediaConfig.customWords" type="textarea" :rows="3" class="config-width" placeholder="OldName => NewName"></el-input>
+					</el-form-item>
+					<el-form-item label="制作组">
+						<el-input v-model="mediaConfig.customReleaseGroups" type="textarea" :rows="3" class="config-width"></el-input>
+					</el-form-item>
+					<el-form-item label="自定义标签">
+						<el-input v-model="mediaConfig.customization" type="textarea" :rows="3" class="config-width"></el-input>
+					</el-form-item>
+				</div>
+				<el-button type="primary" :loading="saveMediaConfigLoading" @click="saveMediaConfig">保存刮削配置</el-button>
+			</el-form>
+		</div>
 	</div>
 </template>
 
@@ -57,6 +141,10 @@
 		openlistPut,
 		openlistDelete
 	} from "@/api/job";
+	import {
+		getMediaScrapingConfig,
+		saveMediaScrapingConfig
+	} from "@/api/mediaScraping";
 	export default {
 		name: 'Engine',
 		components: {},
@@ -66,6 +154,10 @@
 				getLoading: false,
 				deleteLoading: false,
 				editLoading: false,
+				configMode: 'openlist',
+				mediaConfig: this.defaultMediaConfig(),
+				extensionsText: '',
+				saveMediaConfigLoading: false,
 				editData: null,
 				editFlag: false,
 				editShow: false,
@@ -91,7 +183,11 @@
 			};
 		},
 		created() {
+			if (this.$route.query && this.$route.query.type === 'mediaScraping') {
+				this.configMode = 'mediaScraping';
+			}
 			this.getOpenlistList();
+			this.getMediaConfig();
 		},
 		beforeDestroy() {},
 		methods: {
@@ -102,6 +198,61 @@
 					this.openlistList = res.data;
 				}).catch(err => {
 					this.getLoading = false;
+				})
+			},
+			defaultMediaConfig() {
+				return {
+					defaultOpenlistId: null,
+					openlistIds: [],
+					tmdbApiKey: '',
+					tmdbBearerToken: '',
+					tmdbLanguage: 'zh-CN',
+					tmdbIncludeAdult: false,
+					tmdbRequired: true,
+					tmdbTimeout: 30,
+					openlistTimeout: 30,
+					dryRun: true,
+					overwrite: false,
+					refresh: false,
+					limit: 0,
+					renameThreads: 2,
+					renameLogLimit: 10,
+					movieTemplate: '',
+					tvTemplate: '',
+					mediaExtensions: [],
+					customWords: '',
+					customReleaseGroups: '',
+					customization: '',
+					rules: []
+				};
+			},
+			getMediaConfig() {
+				getMediaScrapingConfig().then(res => {
+					this.mediaConfig = Object.assign(this.defaultMediaConfig(), res.data || {});
+					this.extensionsText = (this.mediaConfig.mediaExtensions || []).join(',');
+				})
+			},
+			buildMediaConfig() {
+				const defaultOpenlistId = this.mediaConfig.defaultOpenlistId || null;
+				return {
+					...this.mediaConfig,
+					defaultOpenlistId,
+					openlistIds: defaultOpenlistId ? [defaultOpenlistId] : [],
+					mediaExtensions: (this.extensionsText || '').split(',').map(item => item.trim()).filter(item => item)
+				};
+			},
+			saveMediaConfig() {
+				this.saveMediaConfigLoading = true;
+				saveMediaScrapingConfig(this.buildMediaConfig()).then(res => {
+					this.mediaConfig = Object.assign(this.defaultMediaConfig(), res.data || {});
+					this.extensionsText = (this.mediaConfig.mediaExtensions || []).join(',');
+					this.$message({
+						message: res.msg,
+						type: 'success'
+					});
+					this.saveMediaConfigLoading = false;
+				}).catch(() => {
+					this.saveMediaConfigLoading = false;
 				})
 			},
 			addShow() {
@@ -201,6 +352,14 @@
 			height: 100%;
 		}
 
+		.engine-top {
+			padding: 16px 16px 0;
+		}
+
+		.config-mode {
+			width: 160px;
+		}
+
 		.card-box {
 			box-sizing: border-box;
 			padding: 8px;
@@ -270,6 +429,45 @@
 			}
 		}
 
+		.scraping-config {
+			padding: 16px;
+			max-width: 880px;
+
+			.config-block {
+				background-color: #292b3c;
+				border-radius: 5px;
+				padding: 16px 16px 4px;
+				margin-bottom: 14px;
+			}
+
+			.block-title {
+				font-size: 16px;
+				font-weight: bold;
+				margin-bottom: 14px;
+			}
+
+			.config-width {
+				width: 680px;
+				max-width: 100%;
+			}
+
+			.short-width {
+				width: 180px;
+			}
+
+			.option-url {
+				float: right;
+				color: #8492a6;
+				font-size: 12px;
+				margin-left: 18px;
+			}
+
+			.tip-text {
+				margin: 0 14px 0 8px;
+				color: #909bd4;
+				font-size: 13px;
+			}
+		}
 
 	}
 </style>

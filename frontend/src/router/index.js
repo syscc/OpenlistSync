@@ -55,6 +55,32 @@ const routes = [{
 		}]
 	},
 	{
+		path: '/mediaScraping',
+		component: Layout,
+		children: [{
+			path: '',
+			component: () => import('@/views/page/mediaScraping/index'),
+			name: '媒体名字刮削',
+			meta: {
+				letfIndex: '/mediaScraping'
+			}
+		},{
+			path: 'task/detail',
+			component: () => import('@/views/page/mediaScraping/taskDetail'),
+			name: '媒体刮削任务详情',
+			meta: {
+				letfIndex: '/mediaScraping'
+			}
+		},{
+			path: 'task/item',
+			component: () => import('@/views/page/mediaScraping/taskItemDetail'),
+			name: '媒体刮削执行详情',
+			meta: {
+				letfIndex: '/mediaScraping'
+			}
+		}]
+	},
+	{
 		path: '/engine',
 		component: Layout,
 		children: [{
