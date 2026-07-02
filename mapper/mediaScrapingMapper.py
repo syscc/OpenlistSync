@@ -208,6 +208,16 @@ def getLatestTaskWithRootRenamesByJobId(job_id):
     return rst[0] if rst else None
 
 
+def getLatestTaskWithRootRenameHintsByJobId(job_id):
+    rst = sqlBase.fetchall_to_table(
+        "select * from media_scraping_task where jobId=? and ("
+        "(rootRenames is not null and rootRenames!='' and rootRenames!='[]') "
+        "or request like '%rootRenameFrom%') order by createTime desc, id desc limit 1",
+        (job_id,),
+    )
+    return rst[0] if rst else None
+
+
 def pruneTasks(limit):
     if limit <= 0:
         return

@@ -72,9 +72,16 @@ DEFAULT_MEDIA_EXTENSIONS = {
 
 DEFAULT_MOVIE_TEMPLATE = (
     "{{title}}{% if year %} ({{year}}){% endif %}/"
-    "{{title}}{% if year %} ({{year}}){% endif %}"
-    "{% if videoCodec %} - {{videoCodec}}{% endif %}"
-    "{% if videoBit %} {{videoBit}}{% endif %}{{fileExt}}"
+    "{{title}}{% if year %}.{{year}}{% endif %}"
+    "{% if webSource %}.{{webSource}}{% endif %}"
+    "{% if edition %}.{{edition|replace(' ', '.')}}{% endif %}"
+    "{% if part %}.{{part}}{% endif %}"
+    "{% if videoFormat %}.{{videoFormat|replace('4k', '2160p')}}{% endif %}"
+    "{% if hdrFormat %}.{{hdrFormat}}{% elif hdr %}.{{hdr}}{% endif %}"
+    "{% if videoCodec %}.{{videoCodec|replace('x264', 'H264')|replace('AVC', 'H264')|replace('H265 10bit', 'H265.10bit')|replace('x265 10bit', 'H265.10bit')|replace('x265', 'H265')|replace('HEVC', 'H265')}}{% endif %}"
+    "{% if audioCodec %}.{{audioCodec}}{% endif %}"
+    "{% if customization %}-{{customization}}{% endif %}"
+    "{% if releaseGroup %}-{{releaseGroup}}{% endif %}{{fileExt}}"
 )
 DEFAULT_TV_TEMPLATE = (
     "{{title}}{% if year %} ({{year}}){% endif %}/Season {{season}}/"
@@ -353,6 +360,16 @@ class OpenListClient:
                 "overwrite": overwrite,
                 "skip_existing": False,
                 "merge": False,
+            },
+        )
+
+    def remove(self, dir_path: str, names: list[str]) -> None:
+        self.request(
+            "POST",
+            "/api/fs/remove",
+            {
+                "dir": normalize_openlist_path(dir_path),
+                "names": names,
             },
         )
 
@@ -973,7 +990,7 @@ def tv_video_codec(info: MediaInfo) -> str:
 
 def is_season_dir(path: str) -> bool:
     name = posixpath.basename(normalize_openlist_path(path))
-    return bool(re.fullmatch(r"(?i)Season[\s._-]*\d{1,2}", name))
+    return bool(re.fullmatch(r"(?i)(?:Season[\s._-]*\d{1,2}|S\d{1,2})", name))
 
 
 def optional_dot(value: str) -> str:
@@ -1241,8 +1258,14 @@ def plan_for_file(
     info.year = year
     src_dir = normalize_openlist_path(posixpath.dirname(src_path))
     scan_root = normalize_openlist_path(scan_root)
-    src_dir_is_season_dir = is_season_dir(src_dir)
-    media_root = normalize_openlist_path(posixpath.dirname(src_dir)) if src_dir_is_season_dir else src_dir
+    src_dir_is_season_dir = False
+    media_root = src_dir
+    while is_season_dir(media_root):
+        src_dir_is_season_dir = True
+        parent_root = normalize_openlist_path(posixpath.dirname(media_root))
+        if parent_root == media_root:
+            break
+        media_root = parent_root
     hint_title, hint_year = parse_title_year_hint(posixpath.basename(media_root))
     media_root_is_scan_root = media_root == scan_root
     if src_dir_is_season_dir:
@@ -1435,7 +1458,13 @@ def collect_root_rename_pairs(plans: list[RenamePlan]) -> list[tuple[str, str]]:
         if pair not in seen and pair[0] != pair[1]:
             seen.add(pair)
             root_pairs.append(pair)
-    return root_pairs
+    return [
+        pair for pair in root_pairs
+        if not any(
+            pair[0] != other_pair[0] and pair[0].startswith(other_pair[0] + "/")
+            for other_pair in root_pairs
+        )
+    ]
 
 
 def target_path_before_root_rename(plan: RenamePlan) -> str:
@@ -1449,6 +1478,41 @@ def target_path_before_root_rename(plan: RenamePlan) -> str:
     if target_path.startswith(dst_root + "/"):
         return src_root + target_path[len(dst_root):]
     return target_path
+
+
+def refreshed_dir_names(client: OpenListClient, path: str) -> set[str]:
+    return {
+        str(item.get("name") or "")
+        for item in client.list_dir(normalize_openlist_path(path), refresh=True)
+        if isinstance(item, dict) and item.get("name")
+    }
+
+
+def is_same_parent_season_rename(src_dir: str, target_dir: str) -> bool:
+    src_dir = normalize_openlist_path(src_dir)
+    target_dir = normalize_openlist_path(target_dir)
+    return (
+        normalize_openlist_path(posixpath.dirname(src_dir)) == normalize_openlist_path(posixpath.dirname(target_dir))
+        and is_season_dir(src_dir)
+        and is_season_dir(target_dir)
+        and posixpath.basename(src_dir) != posixpath.basename(target_dir)
+    )
+
+
+def cleanup_empty_season_dirs(client: OpenListClient, path: str) -> None:
+    current = normalize_openlist_path(path)
+    while current and current != "/" and is_season_dir(current):
+        try:
+            if refreshed_dir_names(client, current):
+                return
+        except Exception:
+            return
+        parent = normalize_openlist_path(posixpath.dirname(current))
+        try:
+            client.remove(parent, [posixpath.basename(current)])
+        except Exception:
+            return
+        current = parent
 
 
 def apply_root_renames(
@@ -1621,8 +1685,14 @@ def apply_file_plans(
                         progress_callback(index, plans[index], "error", entries[index][1], OpenListError("aborted"))
                 continue
             try:
-                client.mkdirs(target_dir, known_dirs=known_dirs, known_dirs_lock=known_dirs_lock)
-                client.move(src_dir, target_dir, [name for _, name in group_entries], overwrite=overwrite)
+                if is_same_parent_season_rename(src_dir, target_dir) and not client.exists(target_dir):
+                    client.rename(src_dir, posixpath.basename(target_dir), overwrite=overwrite)
+                    if not client.exists(target_dir):
+                        raise OpenListError(f"season directory rename verification failed: {src_dir} -> {target_dir}")
+                else:
+                    client.mkdirs(target_dir, known_dirs=known_dirs, known_dirs_lock=known_dirs_lock)
+                    client.move(src_dir, target_dir, [name for _, name in group_entries], overwrite=overwrite)
+                    cleanup_empty_season_dirs(client, src_dir)
                 moved_files += len(group_entries)
                 if progress_callback:
                     for index, _ in group_entries:
@@ -1634,12 +1704,65 @@ def apply_file_plans(
                             None,
                         )
             except Exception as exc:
+                move_error = exc
+                try:
+                    target_names = refreshed_dir_names(client, target_dir)
+                except Exception:
+                    target_names = set()
+                try:
+                    source_names = refreshed_dir_names(client, src_dir)
+                except Exception:
+                    source_names = set()
                 for index, _ in group_entries:
-                    if results[index]:
-                        results[index]["status"] = "error"
-                        results[index]["error"] = exc
+                    result = results[index]
+                    current_name = str(result.get("current_name") or "") if result else ""
+                    target_path = result["target_path"] if result else entries[index][1]
+                    if current_name and current_name in target_names:
+                        if result:
+                            result["status"] = "renamed"
+                            result["error"] = None
+                            result["needs_move"] = False
+                        moved_files += 1
+                        if progress_callback:
+                            progress_callback(index, plans[index], "renamed", target_path, None)
+                        continue
+                    if current_name and current_name in source_names:
+                        try:
+                            client.move(src_dir, target_dir, [current_name], overwrite=overwrite)
+                            if result:
+                                result["status"] = "renamed"
+                                result["error"] = None
+                                result["needs_move"] = False
+                            moved_files += 1
+                            if progress_callback:
+                                progress_callback(index, plans[index], "renamed", target_path, None)
+                            continue
+                        except Exception as retry_exc:
+                            try:
+                                target_names = refreshed_dir_names(client, target_dir)
+                            except Exception:
+                                target_names = set()
+                            if current_name in target_names:
+                                if result:
+                                    result["status"] = "renamed"
+                                    result["error"] = None
+                                    result["needs_move"] = False
+                                moved_files += 1
+                                if progress_callback:
+                                    progress_callback(index, plans[index], "renamed", target_path, None)
+                                continue
+                            item_error = retry_exc
+                        else:
+                            item_error = move_error
+                    else:
+                        item_error = move_error
+                    if result:
+                        result["status"] = "error"
+                        result["error"] = item_error
                     if progress_callback:
-                        progress_callback(index, plans[index], "error", entries[index][1], exc)
+                        progress_callback(index, plans[index], "error", target_path, item_error)
+                if all(results[index] and not results[index].get("error") for index, _ in group_entries):
+                    cleanup_empty_season_dirs(client, src_dir)
         print(
             f"[timing] batch_move={time.perf_counter() - move_started:.2f}s "
             f"groups={len(move_groups)} files={moved_files}"
@@ -1753,7 +1876,7 @@ def self_test() -> int:
     assert movie.year == "1999"
     assert format_movie_target(movie) == (
         "The Matrix (1999)/"
-        "The Matrix (1999) - H265.mkv"
+        "The Matrix.1999.BluRay.2160p.HDR10.H265.TrueHD Atmos-REMUX.mkv"
     )
 
     tv = parse_media_info(
@@ -1843,6 +1966,9 @@ def self_test() -> int:
         def move(self, src_dir: str, dst_dir: str, names: list[str], overwrite: bool = False) -> None:
             self.calls.append(("move", src_dir, dst_dir, names, overwrite))
 
+        def remove(self, dir_path: str, names: list[str]) -> None:
+            self.calls.append(("remove", dir_path, names))
+
     pre_root_target_path = target_path_before_root_rename(direct_root_plan)
     assert pre_root_target_path == (
         "/115/恶缘 2025 韩国 奈飞 4K.P8.DV.HDR 精修简体中字 单集7G 共43G/Season 1/"
@@ -1907,6 +2033,72 @@ def self_test() -> int:
             False,
         )
     ]
+
+    class PartialTimeoutMoveClient(RecordingClient):
+        def __init__(self, completed_names: set[str]) -> None:
+            super().__init__()
+            self.completed_names = completed_names
+
+        def move(self, src_dir: str, dst_dir: str, names: list[str], overwrite: bool = False) -> None:
+            self.calls.append(("move", src_dir, dst_dir, names, overwrite))
+            raise TimeoutError("timed out")
+
+        def list_dir(self, path: str, refresh: bool = False, per_page: int = 200) -> list[dict[str, Any]]:
+            self.calls.append(("list_dir", path, refresh, per_page))
+            if path.endswith("/Season 1"):
+                return [{"name": name} for name in sorted(self.completed_names)]
+            return []
+
+    partial_timeout_client = PartialTimeoutMoveClient({
+        "恶缘.S01E06.2160p.WEB.HDR.DV.H265.DDP 5.1 Atmos.mkv",
+        "恶缘.S01E05.2160p.WEB.HDR.DV.H265.DDP 5.1 Atmos.mkv",
+    })
+    partial_timeout_out = io.StringIO()
+    with contextlib.redirect_stdout(partial_timeout_out):
+        assert apply_file_plans(
+            partial_timeout_client,
+            [direct_root_plan, second_root_plan],
+            overwrite=False,
+            dry_run=False,
+            rename_threads=1,
+        ) == 2
+    assert partial_timeout_out.getvalue().count("[renamed]") == 2
+
+    class SeasonRenameClient(RecordingClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self.season_renamed = False
+
+        def exists(self, path: str) -> bool:
+            path = normalize_openlist_path(path)
+            if path == "/shows/Karma/Season 0":
+                return self.season_renamed
+            return True
+
+        def rename(self, path: str, new_name: str, overwrite: bool = False) -> None:
+            super().rename(path, new_name, overwrite)
+            if normalize_openlist_path(path) == "/shows/Karma/S00" and new_name == "Season 0":
+                self.season_renamed = True
+
+    season_rename_plan = RenamePlan(
+        MediaInfo("Karma", ".mkv", "2025", "0", "S00E01"),
+        "/shows/Karma/S00/old-name.mkv",
+        "/shows/Karma/Season 0/Karma.S00E01.mkv",
+        "/shows/Karma/S00/old-name.mkv",
+        "",
+        "",
+    )
+    season_rename_client = SeasonRenameClient()
+    with contextlib.redirect_stdout(io.StringIO()):
+        assert apply_file_plans(
+            season_rename_client,
+            [season_rename_plan],
+            overwrite=False,
+            dry_run=False,
+            rename_threads=1,
+        ) == 1
+    assert ("rename", "/shows/Karma/S00", "Season 0", False) in season_rename_client.calls
+    assert not [call for call in season_rename_client.calls if call[0] == "move"]
 
     class ConflictClient(RecordingClient):
         def exists(self, path: str) -> bool:
@@ -2008,6 +2200,17 @@ def self_test() -> int:
         raise AssertionError("expected conflicting source root rename to fail")
     except OpenListError as exc:
         assert "同一媒体目录存在多个目标命名" in str(exc)
+    nested_root_plan = RenamePlan(
+        direct_root_plan.info,
+        "",
+        "",
+        "",
+        direct_root_plan.root_rename_from + "/S00",
+        direct_root_plan.root_rename_from + "/乘风破浪的姐姐 (2020)",
+    )
+    assert collect_root_rename_pairs([nested_root_plan, direct_root_plan]) == [
+        (direct_root_plan.root_rename_from, direct_root_plan.root_rename_to)
+    ]
     try:
         apply_root_renames(
             recording_client,
@@ -2027,7 +2230,7 @@ def self_test() -> int:
         "auto",
         tmdb,
     )
-    assert release_plan.target_path == "/movies/The Matrix (1999)/The Matrix (1999) - H265.mkv"
+    assert release_plan.target_path == "/movies/The Matrix (1999)/The Matrix.1999.BluRay.2160p.H265-FLUX.mkv"
     release_info = parse_media_info("Show.S01E01.1080p.WEB.HEVC-FLUX.mkv", "tv")
     assert release_info.release_group == "FLUX"
     existing_season_plan = plan_for_file(
@@ -2037,6 +2240,28 @@ def self_test() -> int:
         tmdb,
     )
     assert existing_season_plan.target_path == "/shows/Karma (2025)/Season 1/Karma.S01E02.2160p.WEB.H265.mkv"
+    s00_dir_plan = plan_for_file(
+        "/115/最近接收/Older.Sisters.Who.Brave.The.Winds.And.Waves.2020.S07.2160p.WEB-DL.AAC.H.265-HiveWeb/S00/"
+        "Older.Sisters.Who.Brave.The.Winds.And.Waves.2020.S00E250.2160p.WEB-DL.AAC.H.265-HiveWeb.mp4",
+        "/115/最近接收/Older.Sisters.Who.Brave.The.Winds.And.Waves.2020.S07.2160p.WEB-DL.AAC.H.265-HiveWeb",
+        "auto",
+        tmdb,
+    )
+    assert s00_dir_plan.target_path == (
+        "/115/最近接收/Older Sisters Who Brave The Winds And Waves (2020)/Season 0/"
+        "Older Sisters Who Brave The Winds And Waves.S00E250.2160p.WEB-DL.H265.AAC.mp4"
+    )
+    nested_s00_dir_plan = plan_for_file(
+        "/115/最近接收/乘风破浪的姐姐 (2020)/S00/Season 0/"
+        "乘风破浪的姐姐.S00E250.2160p.WEB-DL.H265.AAC.mp4",
+        "/115/最近接收/乘风破浪的姐姐 (2020)",
+        "auto",
+        tmdb,
+    )
+    assert nested_s00_dir_plan.target_path == (
+        "/115/最近接收/乘风破浪的姐姐 (2020)/Season 0/"
+        "乘风破浪的姐姐.S00E250.2160p.WEB-DL.H265.AAC.mp4"
+    )
     season_dir_plan = plan_for_file(
         "/115/videos/电视剧/国产剧/一念关山 (2023)/Season 1/一念关山 - S01E40 - 第 40 集.mkv",
         "/115/videos/电视剧/国产剧/一念关山 (2023)/Season 1",

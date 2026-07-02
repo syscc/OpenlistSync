@@ -7,6 +7,8 @@ import re
 import threading
 import time
 
+from common import commonUtils
+from common.LNG import G
 from mapper import mediaScrapingMapper, openlistMapper, systemConfigMapper
 from media_tools.openlist_media_renamer import (
     DEFAULT_MEDIA_EXTENSIONS,
@@ -27,6 +29,7 @@ from media_tools.openlist_media_renamer import (
     plan_for_file,
     run as run_media_renamer,
 )
+from service.notify import notifyService
 from service.openlist import openlistService
 
 
@@ -366,27 +369,37 @@ def _target_before_root_rename(item, target):
 
 def _root_rename_rows(task_id, preview_items, status=0, err_msg=''):
     rows = []
-    seen = set()
-    for item in preview_items or []:
-        if not isinstance(item, dict):
-            continue
-        src = normalize_openlist_path(str(item.get('rootRenameFrom') or ''))
-        target = normalize_openlist_path(str(item.get('rootRenameTo') or ''))
-        if not src or not target or src == target or (src, target) in seen:
-            continue
-        seen.add((src, target))
+    for item in _root_renames_from_preview_items(preview_items):
+        src = item['from']
+        target = item['to']
+        preview_item = next((
+            row for row in preview_items or []
+            if isinstance(row, dict)
+            and normalize_openlist_path(str(row.get('rootRenameFrom') or '')) == src
+            and normalize_openlist_path(str(row.get('rootRenameTo') or '')) == target
+        ), {})
         rows.append({
             'taskId': task_id,
             'srcPath': src,
             'targetPath': target,
             'status': status,
-            'title': str(item.get('title') or ''),
-            'year': str(item.get('year') or ''),
+            'title': str(preview_item.get('title') or ''),
+            'year': str(preview_item.get('year') or ''),
             'season': '',
             'episode': '',
             'errMsg': err_msg,
         })
     return rows
+
+
+def _drop_nested_root_renames(items):
+    return [
+        item for item in items
+        if not any(
+            item['from'] != other['from'] and item['from'].startswith(other['from'] + '/')
+            for other in items
+        )
+    ]
 
 
 def _root_renames_from_preview_items(preview_items):
@@ -401,7 +414,7 @@ def _root_renames_from_preview_items(preview_items):
             continue
         seen.add((src, target))
         items.append({'from': src, 'to': target})
-    return items
+    return _drop_nested_root_renames(items)
 
 
 def _planned_item_count(preview_items):
@@ -567,13 +580,27 @@ def _root_renames_from_task_request(request):
     return _root_renames_from_preview_items(request.get('plans'))
 
 
+def _root_renames_from_task(task):
+    if not task:
+        return []
+    try:
+        root_renames = json.loads(task.get('rootRenames') or '[]')
+    except json.JSONDecodeError:
+        root_renames = []
+    if isinstance(root_renames, list) and root_renames:
+        return root_renames
+    return _root_renames_from_task_request(task.get('request'))
+
+
+def _latest_task_with_root_rename_hints(job_id):
+    return mediaScrapingMapper.getLatestTaskWithRootRenameHintsByJobId(job_id)
+
+
 def _attach_task_display_path(task):
     if not task:
         return task
     item = dict(task)
-    root_renames = item.get('rootRenames')
-    if not root_renames or root_renames == '[]':
-        root_renames = _root_renames_from_task_request(item.get('request'))
+    root_renames = _root_renames_from_task(item)
     item['displayPath'] = _root_rename_display_path(root_renames, item.get('path'))
     item['displayTaskName'] = _root_rename_display_name(root_renames, item.get('taskName'))
     return item
@@ -583,10 +610,8 @@ def _attach_job_display_path(job):
     if not job:
         return job
     item = dict(job)
-    root_task = mediaScrapingMapper.getLatestTaskWithRootRenamesByJobId(item.get('id'))
-    root_renames = root_task.get('rootRenames') if root_task else ''
-    if not root_renames or root_renames == '[]':
-        root_renames = _root_renames_from_task_request(item.get('request'))
+    root_task = _latest_task_with_root_rename_hints(item.get('id'))
+    root_renames = _root_renames_from_task(root_task) if root_task else _root_renames_from_task_request(item.get('request'))
     item['displayPath'] = _root_rename_display_path(
         root_renames,
         item.get('path'),
@@ -602,10 +627,7 @@ def _root_rename_target(task, path):
     path = normalize_openlist_path(str(path or ''))
     if not task or not path:
         return ''
-    try:
-        root_renames = json.loads(task.get('rootRenames') or '[]')
-    except json.JSONDecodeError:
-        root_renames = []
+    root_renames = _root_renames_from_task(task)
     if not isinstance(root_renames, list):
         return ''
     for item in reversed(root_renames):
@@ -626,10 +648,7 @@ def _root_rename_path_pair(task, path):
     path = normalize_openlist_path(str(path or ''))
     if not task or not path:
         return '', ''
-    try:
-        root_renames = json.loads(task.get('rootRenames') or '[]')
-    except json.JSONDecodeError:
-        root_renames = []
+    root_renames = _root_renames_from_task(task)
     if not isinstance(root_renames, list):
         return '', ''
     for item in reversed(root_renames):
@@ -672,9 +691,9 @@ def _openlist_path_exists(openlist_id, path, refresh=False):
     try:
         client = openlistService.getClientById(openlist_id)
         if refresh:
-            client.post('/api/fs/list', data={'path': path, 'refresh': True})
-        else:
-            client.post('/api/fs/get', data={'path': path})
+            parent = _parent_openlist_path(path)
+            client.post('/api/fs/list', data={'path': parent, 'refresh': True})
+        client.post('/api/fs/get', data={'path': path})
         return True
     except Exception as exc:
         if _is_openlist_missing_error(exc):
@@ -784,7 +803,7 @@ def _new_task_row(req, config, openlist, preview_items, status=1):
 
 
 def _job_row_from_task(task, config=None):
-    task_name = _root_rename_display_name(task.get('rootRenames'), task.get('taskName'))
+    task_name = _root_rename_display_name(_root_renames_from_task(task), task.get('taskName'))
     task_name = str(task_name or _task_name_from_items([], task.get('path')) or '').strip()
     path = normalize_openlist_path(str(task.get('path') or ''))
     openlist_id = _to_int(task.get('openlistId'), 0, 0)
@@ -1036,6 +1055,7 @@ def _update_run_task(task_id, req, config, result, elapsed, aborted=False):
     mediaScrapingMapper.addTaskItems(rows)
     _touch_job_from_task(task_id)
     mediaScrapingMapper.pruneTasks(config.get('renameLogLimit') or 0)
+    return task
 
 
 def _run_task_background(task_id, req, abort_event=None):
@@ -1078,22 +1098,32 @@ def _run_task_background(task_id, req, abort_event=None):
             raise InterruptedError('aborted')
         result = runScraping(req, abort_event, progress_callback, root_progress_callback)
         elapsed = time.perf_counter() - started
-        _update_run_task(task_id, req, config, result, elapsed, bool(abort_event and abort_event.is_set()))
+        task = _update_run_task(task_id, req, config, result, elapsed, bool(abort_event and abort_event.is_set()))
+        _send_task_notify(task)
         _log_run_result('run', str(req.get('path') or ''), elapsed, result)
     except Exception as e:
         elapsed = time.perf_counter() - started
         aborted = bool(abort_event and abort_event.is_set())
         task = mediaScrapingMapper.getTaskById(task_id)
         if task:
+            mediaScrapingMapper.updateTaskItemsStatus(task_id, 7)
+            stats = mediaScrapingMapper.getTaskItemStats(task_id)
+            success_num = stats.get(2, task.get('successNum') or 0)
+            fail_num = stats.get(7, task.get('failNum') or 0)
+            skip_num = stats.get(3, task.get('skipNum') or 0)
             task.update({
                 'status': 4 if aborted else 6,
+                'successNum': success_num,
+                'failNum': fail_num,
+                'skipNum': skip_num,
+                'total': max(_to_int(task.get('total'), 0, 0), success_num + fail_num + skip_num),
                 'elapsed': elapsed,
                 'errMsg': '任务已中止' if aborted else str(e),
                 'updateTime': int(time.time()),
             })
             mediaScrapingMapper.updateTask(task)
             _touch_job_from_task(task_id)
-        mediaScrapingMapper.updateTaskItemsStatus(task_id, 7)
+            _send_task_notify(task, task['status'], task['errMsg'])
         logging.getLogger().exception(e)
     finally:
         with MEDIA_ABORT_LOCK:
@@ -1109,11 +1139,11 @@ def startRunTask(req):
     task_req['openlistId'] = openlist_id
     task_row = _new_task_row(task_req, config, openlist, preview_items)
     if not preview_items and task_req.get('jobId'):
-        root_task = mediaScrapingMapper.getLatestTaskWithRootRenamesByJobId(task_req['jobId'])
+        root_task = _latest_task_with_root_rename_hints(task_req['jobId'])
         _, target_path = _root_rename_path_pair(root_task, task_row.get('path'))
         if target_path:
             task_row['taskName'] = target_path.rstrip('/').split('/')[-1]
-            task_row['rootRenames'] = root_task.get('rootRenames') or '[]'
+            task_row['rootRenames'] = json.dumps(_root_renames_from_task(root_task), ensure_ascii=False)
     job_row = _job_row_from_task(task_row, config)
     job = mediaScrapingMapper.getJobByGroupKey(job_row['groupKey'])
     if job:
@@ -1230,6 +1260,41 @@ def _task_summary(task):
     }
 
 
+def _send_task_notify(task, status=None, err_msg=''):
+    if not task:
+        return
+    notify_list = notifyService.getNotifyList(True)
+    if not notify_list:
+        return
+    status = _to_int(status if status is not None else task.get('status'), 0, 0)
+    status_names = G('task_status')
+    status_name = status_names[status] if 0 <= status < len(status_names) else str(status)
+    task_name = task.get('taskName') or _task_name_from_items([], task.get('path'))
+    title = f"媒体名字刮削{status_name} - OpenListSync"
+    hours, minutes, seconds = commonUtils.convertSeconds(int(float(task.get('elapsed') or 0)))
+    duration_text = G('hms').format(hours, minutes, seconds)
+    content = (
+        f"任务名称：{task_name}\n"
+        f"OpenList：{task.get('openlistName') or task.get('openlistId') or '-'}\n"
+        f"媒体路径：{task.get('path') or '-'}\n"
+        f"任务状态：{status_name}\n\n"
+        f"共 {task.get('total') or 0} 个重命名项，"
+        f"成功 {task.get('successNum') or 0} 个，"
+        f"跳过 {task.get('skipNum') or 0} 个，"
+        f"失败 {task.get('failNum') or 0} 个。\n\n"
+        f"本次耗时：{duration_text}"
+    )
+    err_msg = err_msg or task.get('errMsg') or ''
+    if err_msg:
+        content += f"\n失败原因：{err_msg}"
+    logger = logging.getLogger()
+    for notify in notify_list:
+        try:
+            notifyService.sendNotify(notify, title, content, False)
+        except Exception as exc:
+            logger.error(G('notify_error').format(str(exc)))
+
+
 def getTaskItems(req):
     task = mediaScrapingMapper.getTaskById(_to_int(req.get('taskId'), 0, 0))
     task = _attach_task_display_path(task)
@@ -1285,7 +1350,7 @@ def rerunTask(req):
     openlist_id = _to_int(task_req.get('openlistId') or task.get('openlistId'), 0, 0)
     root_task = task
     if task.get('jobId') and not task.get('rootRenames'):
-        root_task = mediaScrapingMapper.getLatestTaskWithRootRenamesByJobId(task['jobId']) or task
+        root_task = _latest_task_with_root_rename_hints(task['jobId']) or task
     task_req = _prepare_rerun_request(task_req, task.get('path') or '', root_task, openlist_id)
     return startRunTask(task_req)
 
@@ -1310,7 +1375,7 @@ def rerunJob(req):
             'config': getConfig()
         }
     latest_task = (
-        mediaScrapingMapper.getLatestTaskWithRootRenamesByJobId(job_id)
+        _latest_task_with_root_rename_hints(job_id)
         or mediaScrapingMapper.getLatestTaskByJobId(job_id)
     )
     openlist_id = _to_int(task_req.get('openlistId') or job.get('openlistId'), 0, 0)
