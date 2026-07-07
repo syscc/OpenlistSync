@@ -626,7 +626,7 @@ def extract_streaming_platform(text: str) -> str:
 
 def extract_hdr(text: str) -> tuple[str, str]:
     has_dv = bool(re.search(r"(?i)\b(?:DoVi|DV|Dolby[\s._-]*Vision)\b", text))
-    if re.search(r"(?i)\bHDR10\+|\bHDR10[\s._-]*Plus\b", text):
+    if re.search(r"(?i)\bHDR10(?:\+|[\s._-]*(?:P|Plus)\b)", text):
         return ("HDR10Plus.DV" if has_dv else "HDR10Plus"), ""
     if re.search(r"(?i)\bHDR10\b", text):
         return ("HDR10.DV" if has_dv else "HDR10"), ""
@@ -1878,6 +1878,12 @@ def self_test() -> int:
         "The Matrix (1999)/"
         "The Matrix.1999.BluRay.2160p.HDR10.H265.TrueHD Atmos-REMUX.mkv"
     )
+    hdr10p_movie = parse_media_info(
+        "The.Furious.2026.2160p.iT.WEB-DL.DDP5.1.Atmos.HDR10P.H.265-HiveWeb.mkv",
+        "movie",
+    )
+    assert hdr10p_movie.hdr_format == "HDR10Plus"
+    assert "HDR10Plus" in format_movie_target(hdr10p_movie)
 
     tv = parse_media_info(
         "Slow.Horses.2022.S03E01.2160p.WEB-DL.DoVi.HDR.HEVC.DDP5.1-GROUP.mkv",
