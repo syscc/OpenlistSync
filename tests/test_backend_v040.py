@@ -135,6 +135,29 @@ class SourceStartTests(unittest.TestCase):
             self.assertEqual(str(web_dir), popen_mock.call_args.kwargs['cwd'])
             popen_mock.call_args.kwargs['stdout'].close()
 
+    def test_existing_port_listener_is_not_adopted(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            with mock.patch.object(sourceStart, 'read_configured_backend_port', return_value=8023), \
+                    mock.patch.object(sourceStart, 'find_listen_pid_by_port', return_value=321), \
+                    mock.patch.object(sourceStart, 'write_pid') as write_pid_mock, \
+                    mock.patch('builtins.print'):
+                self.assertIsNone(sourceStart.start_backend(base))
+                self.assertIsNone(sourceStart.start_frontend(base))
+            write_pid_mock.assert_not_called()
+
+    def test_stop_only_targets_services_recorded_by_source_script(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            with mock.patch.object(sourceStart, 'project_root', return_value=base), \
+                    mock.patch.object(sourceStart, 'find_listen_pid_by_port') as find_pid_mock, \
+                    mock.patch.object(sourceStart, 'stop_pid', return_value=False) as stop_pid_mock, \
+                    mock.patch('builtins.print'):
+                sourceStart.stop()
+            find_pid_mock.assert_not_called()
+            self.assertEqual(2, stop_pid_mock.call_count)
+            self.assertTrue(all(call.args[0] is None for call in stop_pid_mock.call_args_list))
+
 
 class DatabaseMigrationTests(TemporaryWorkingDirectory):
     def _use_database(self, path, password=config.DEFAULT_PASSWORD):
@@ -387,6 +410,61 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual('Media renaming success - OpenListSync', title)
         self.assertIn('Task: Modern Family (2009)', content)
         self.assertIn('3 rename items: 2 succeeded, 1 skipped, and 0 failed.', content)
+
+    def test_media_background_task_inherits_request_language(self):
+        LNG.set_context_lang('zh-CN')
+        observed = []
+        result = {'success': True, 'results': [{}]}
+        task = {'status': 2}
+
+        with mock.patch.object(
+                mediaScrapingService, '_prepare_task_preview_items', side_effect=lambda _task_id, req, _config: req), \
+                mock.patch.object(mediaScrapingService, 'runScraping', return_value=result), \
+                mock.patch.object(mediaScrapingService, '_update_run_task', return_value=task), \
+                mock.patch.object(
+                    mediaScrapingService,
+                    '_send_task_notify',
+                    side_effect=lambda _task: observed.append(LNG.G('success'))), \
+                mock.patch.object(mediaScrapingService, '_log_run_result'):
+            mediaScrapingService._run_task_background(
+                1,
+                {'path': '/115/test', 'config': {}},
+                request_lang='en-US',
+            )
+
+        self.assertEqual(['Success'], observed)
+
+    def test_media_reruns_forward_current_request_language(self):
+        task = {
+            'id': 1,
+            'jobId': None,
+            'path': '/115/test',
+            'openlistId': 2,
+            'request': json.dumps({'path': '/115/test', 'config': {}}),
+            'rootRenames': '[]',
+        }
+        job = {
+            'id': 3,
+            'path': '/115/test',
+            'openlistId': 2,
+            'request': json.dumps({'path': '/115/test', 'config': {}}),
+        }
+
+        with mock.patch.object(mediaScrapingService.mediaScrapingMapper, 'getTaskById', return_value=task), \
+                mock.patch.object(mediaScrapingService.mediaScrapingMapper, 'getJobById', return_value=job), \
+                mock.patch.object(mediaScrapingService, '_ensure_legacy_jobs'), \
+                mock.patch.object(mediaScrapingService, '_latest_task_with_root_rename_hints', return_value=None), \
+                mock.patch.object(mediaScrapingService.mediaScrapingMapper, 'getLatestTaskByJobId', return_value=task), \
+                mock.patch.object(
+                    mediaScrapingService,
+                    '_prepare_rerun_request',
+                    side_effect=lambda task_req, *_args: task_req), \
+                mock.patch.object(mediaScrapingService, 'startRunTask', return_value={}) as start_mock:
+            mediaScrapingService.rerunTask({'taskId': 1, '__lang': 'en-US'})
+            mediaScrapingService.rerunJob({'jobId': 3, '__lang': 'en-US'})
+
+        self.assertEqual('en-US', start_mock.call_args_list[0].args[0]['__lang'])
+        self.assertEqual('en-US', start_mock.call_args_list[1].args[0]['__lang'])
 
     def test_webhook_api_key_mismatch_is_redacted_from_logs(self):
         logger = logging.getLogger()

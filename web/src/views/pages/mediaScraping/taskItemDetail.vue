@@ -223,8 +223,7 @@
 					pageSize: 10,
 					pageNum: 1,
 					status: null,
-					type: null,
-					all: true
+					type: null
 				},
 				loading: false,
 				requesting: false,

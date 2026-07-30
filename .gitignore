@@ -22,3 +22,10 @@ web/node_modules/
 
 # Misc
 *.tmp
+
+# Local QA and agent state
+.mindfs/
+.playwright-mcp/
+.serena/
+.spec-workflow/
+v040-*.png

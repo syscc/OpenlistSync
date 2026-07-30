@@ -8,7 +8,7 @@ import threading
 import time
 
 from common import commonUtils
-from common.LNG import G
+from common.LNG import G, set_context_lang
 from mapper import mediaScrapingMapper, openlistMapper, systemConfigMapper
 from media_tools.openlist_media_renamer import (
     DEFAULT_MEDIA_EXTENSIONS,
@@ -1058,7 +1058,9 @@ def _update_run_task(task_id, req, config, result, elapsed, aborted=False):
     return task
 
 
-def _run_task_background(task_id, req, abort_event=None):
+def _run_task_background(task_id, req, abort_event=None, request_lang=None):
+    if request_lang:
+        set_context_lang(request_lang)
     started = time.perf_counter()
     config = _normalize_config(req.get('config') or getConfig())
     progress_lock = threading.Lock()
@@ -1131,6 +1133,7 @@ def _run_task_background(task_id, req, abort_event=None):
 
 
 def startRunTask(req):
+    request_lang = req.get('__lang')
     config = _normalize_config(req.get('config') or getConfig())
     openlist_id = _selected_openlist_id(req, config)
     openlist = openlistMapper.getOpenlistById(openlist_id)
@@ -1158,7 +1161,11 @@ def startRunTask(req):
     abort_event = threading.Event()
     with MEDIA_ABORT_LOCK:
         MEDIA_ABORT_EVENTS[task_id] = abort_event
-    threading.Thread(target=_run_task_background, args=(task_id, task_req, abort_event), daemon=True).start()
+    threading.Thread(
+        target=_run_task_background,
+        args=(task_id, task_req, abort_event, request_lang),
+        daemon=True,
+    ).start()
     mediaScrapingMapper.pruneTasks(config.get('renameLogLimit') or 0)
     return {
         'jobId': job_id,
@@ -1333,6 +1340,7 @@ def deleteJob(req):
 
 
 def rerunTask(req):
+    request_lang = req.get('__lang')
     task_id = _to_int(req.get('taskId') or req.get('id'), 0, 0)
     task = mediaScrapingMapper.getTaskById(task_id)
     if not task:
@@ -1356,10 +1364,13 @@ def rerunTask(req):
     if task.get('jobId') and not task.get('rootRenames'):
         root_task = _latest_task_with_root_rename_hints(task['jobId']) or task
     task_req = _prepare_rerun_request(task_req, task.get('path') or '', root_task, openlist_id)
+    if request_lang:
+        task_req['__lang'] = request_lang
     return startRunTask(task_req)
 
 
 def rerunJob(req):
+    request_lang = req.get('__lang')
     _ensure_legacy_jobs()
     job_id = _to_int(req.get('jobId') or req.get('id'), 0, 0)
     job = mediaScrapingMapper.getJobById(job_id)
@@ -1385,6 +1396,8 @@ def rerunJob(req):
     openlist_id = _to_int(task_req.get('openlistId') or job.get('openlistId'), 0, 0)
     task_req = _prepare_rerun_request(task_req, job.get('path') or '', latest_task, openlist_id)
     task_req['jobId'] = job_id
+    if request_lang:
+        task_req['__lang'] = request_lang
     return startRunTask(task_req)
 
 

@@ -179,7 +179,6 @@ def start_backend(base):
     existing_pid = find_listen_pid_by_port(port)
     if existing_pid:
         print(f"Backend already listening on {port}, PID: {existing_pid}")
-        write_pid(data_dir(base) / BACKEND_PID, existing_pid)
         return None
 
     py = python_executable(base)
@@ -194,7 +193,6 @@ def start_frontend(base):
     existing_pid = find_listen_pid_by_port(FRONTEND_PORT)
     if existing_pid:
         print(f"Frontend already listening on {FRONTEND_PORT}, PID: {existing_pid}")
-        write_pid(data_dir(base) / FRONTEND_PID, existing_pid)
         return None
 
     npm = find_npm()
@@ -246,15 +244,14 @@ def stop_pid(pid, label):
 def stop():
     base = project_root()
     os.chdir(base)
-    port = read_configured_backend_port(base)
     pids = [
-        ("Backend", data_dir(base) / BACKEND_PID, port),
-        ("Frontend", data_dir(base) / FRONTEND_PID, FRONTEND_PORT),
+        ("Backend", data_dir(base) / BACKEND_PID),
+        ("Frontend", data_dir(base) / FRONTEND_PID),
     ]
 
     stopped_any = False
-    for label, pid_file, port in pids:
-        pid = read_pid(pid_file) or find_listen_pid_by_port(port)
+    for label, pid_file in pids:
+        pid = read_pid(pid_file)
         stopped_any = stop_pid(pid, label) or stopped_any
         try:
             pid_file.unlink()

@@ -1,7 +1,8 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
 import Cookies from 'js-cookie';
 import { useMediaQuery } from '@vueuse/core';
+import { useRoute } from 'vue-router';
 import appHeader from '@/views/components/appHeader.vue';
 import appLeft from './components/appAside.vue';
 import { saveLanguage } from '@/api/system';
@@ -9,9 +10,18 @@ import { useAppStore } from '@/store/useAppStore';
 let isCollapse = ref(false);
 const isMobile = useMediaQuery('(max-width: 768px)');
 const appStore = useAppStore();
+const route = useRoute();
+const appMainRef = ref();
 const changeCollapse = function changeCollapse(val) {
     isCollapse.value = val;
 }
+watch(() => route.fullPath, async () => {
+    await nextTick();
+    if (appMainRef.value) {
+        appMainRef.value.scrollTop = 0;
+        appMainRef.value.scrollLeft = 0;
+    }
+});
 onMounted(() => {
     if (Cookies.get(appStore.cookieName)) {
         saveLanguage(localStorage.getItem('lang') || 'zh-CN').catch(() => {})
@@ -20,7 +30,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="app-main">
+    <div ref="appMainRef" class="app-main">
         <appHeader class="app-header" />
         <appLeft :isCollapse="isMobile ? false : isCollapse" :isMobile="isMobile" @changeCollapse="changeCollapse"
             :class="`app-left${isCollapse ? ' left-collapse' : ''}`" />
