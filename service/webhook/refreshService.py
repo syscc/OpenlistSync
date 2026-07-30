@@ -133,6 +133,9 @@ def refresh_after_task(job, status):
     key = f"{job_identity}:{status}"
     now = time.time()
     with _recent_refresh_lock:
+        for stale_key, refreshed_at in tuple(_recent_refresh.items()):
+            if now - refreshed_at >= 60:
+                _recent_refresh.pop(stale_key, None)
         last = _recent_refresh.get(key)
         if last and now - last < 60:
             logger.info(f"Refresh skipped: duplicate key={key}")

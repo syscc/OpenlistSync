@@ -224,6 +224,7 @@
 				browserItems: [],
 				previewResult: null,
 				browseLoading: false,
+				initialBrowseRequested: false,
 				previewLoading: false,
 				runLoading: false,
 				previewSeq: 0,
@@ -257,8 +258,9 @@
 			}
 		},
 		created() {
-			this.getOpenlistList();
-			this.getConfig();
+			Promise.allSettled([this.getOpenlistList(), this.getConfig()]).then(() => {
+				this.ensureDefaultEngine();
+			});
 		},
 		beforeUnmount() {},
 		methods: {
@@ -289,16 +291,14 @@
 				};
 			},
 			getOpenlistList() {
-				openlistGet().then(res => {
+				return openlistGet().then(res => {
 					this.openlistList = res.data || [];
-					this.ensureDefaultEngine();
 				})
 			},
 			getConfig() {
-				getMediaScrapingConfig().then(res => {
+				return getMediaScrapingConfig().then(res => {
 					this.config = Object.assign(this.defaultConfig(), res.data || {});
 					this.extensionsText = (this.config.mediaExtensions || []).join(',');
-					this.ensureDefaultEngine();
 					this.getTaskList();
 				})
 			},
@@ -309,7 +309,8 @@
 				if (!this.config.defaultOpenlistId && this.openlistList.length) {
 					this.config.defaultOpenlistId = this.openlistList[0].id;
 				}
-				if (this.config.defaultOpenlistId && this.browserItems.length === 0) {
+				if (this.config.defaultOpenlistId && !this.initialBrowseRequested) {
+					this.initialBrowseRequested = true;
 					this.browsePath(this.currentPath);
 				}
 			},

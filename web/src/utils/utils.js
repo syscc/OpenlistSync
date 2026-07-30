@@ -67,7 +67,7 @@ export function parseSize(val) {
     return "--";
   }
   const unitList = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0;
+  let i;
   for (i = 0; i < unitList.length; i++) {
     if (val < 1024 ** (i + 1)) {
       return (val / (1024 ** i)).toFixed(2).replace(/\.?0*$/, "") + " " + unitList[i];

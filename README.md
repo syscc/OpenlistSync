@@ -362,8 +362,9 @@ OpenlistSync/
 ├── tests/                          # 后端迁移、配置、同步过滤与通知测试
 ├── README/                         # README 引用的截图资源
 ├── doc/                            # 文档与历史 changelog
-└── data/                           # 运行时数据目录，本地生成，不建议提交
-    ├── openlistsync.db             # SQLite 数据库
+└── data/                           # 源码启动脚本与本地运行数据
+    ├── start.py                    # 源码模式安装依赖、启动、停止与重启脚本
+    ├── openlistsync.db             # SQLite 数据库（本地生成，不提交）
     ├── config.ini                  # 可选运行配置
     ├── secret.key                  # Cookie 签名密钥
     └── log/                        # 运行日志

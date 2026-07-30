@@ -129,6 +129,7 @@ home:
   srcPath: Source Path
   dstPath: Target Path
   selectDir: Select Directory
+  changeDir: Change Directory
   addDir: Add Directory
   deleteDir: Delete
   jobRemark: Job Name

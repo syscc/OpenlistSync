@@ -129,6 +129,7 @@ home:
   srcPath: 源目录
   dstPath: 目标目录
   selectDir: 选择目录
+  changeDir: 更换目录
   addDir: 添加目录
   deleteDir: 删除
   jobRemark: 作业名称

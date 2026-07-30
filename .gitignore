@@ -5,6 +5,7 @@ __pycache__/
 # Local data and runtime artifacts
 data/**
 !data/env.sample
+!data/start.py
 
 # Logs and pid
 *.log

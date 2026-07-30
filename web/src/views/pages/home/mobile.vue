@@ -496,7 +496,7 @@ onMounted(getJobList);
             <div v-else class="path-editor">
               <div class="selected-path">{{ editData.srcPath || $t("home.requiredSource") }}</div>
               <el-button type="primary" @click="selectPath('source')">
-                {{ editData.srcPath ? $t("common.change") : $t("common.select") }}{{ $t("home.selectDir") }}
+                {{ editData.srcPath ? $t("home.changeDir") : $t("home.selectDir") }}
               </el-button>
             </div>
           </el-form-item>
@@ -510,7 +510,7 @@ onMounted(getJobList);
               </div>
               <div v-else class="field-placeholder">{{ $t("home.mobileNoTargets") }}</div>
               <el-button class="full-width-button" type="primary" plain @click="selectPath('target')">
-                {{ editData.dstPath.length ? $t("common.add") : $t("common.select") }}{{ $t("home.selectDir") }}
+                {{ editData.dstPath.length ? $t("home.addDir") : $t("home.selectDir") }}
               </el-button>
             </template>
           </el-form-item>

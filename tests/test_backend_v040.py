@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from common import LNG, config, locales, sqlInit
+from data import start as sourceStart
 from service.mediaScraping import mediaScrapingService
 from service.notify import notifyService
 from service.syncJob import jobClient, jobService, taskService
@@ -107,6 +108,32 @@ class LocalizationAndConfigTests(TemporaryWorkingDirectory):
             self.assertIn(expected, message)
             if hidden is not None:
                 self.assertNotIn(hidden, message)
+
+
+class SourceStartTests(unittest.TestCase):
+    def test_frontend_install_and_launch_use_vue3_web_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            web_dir = base / 'web'
+            web_dir.mkdir()
+            (web_dir / 'package.json').write_text('{}', encoding='utf-8')
+            (web_dir / 'package-lock.json').write_text('{}', encoding='utf-8')
+
+            with mock.patch.object(sourceStart, 'find_npm', return_value='npm'), \
+                    mock.patch.object(sourceStart, 'run', return_value=True) as run_mock:
+                self.assertTrue(sourceStart.install_frontend_deps(base))
+            self.assertEqual(str(web_dir), run_mock.call_args.kwargs['cwd'])
+            self.assertEqual(['npm', 'ci'], run_mock.call_args.args[0])
+
+            process = mock.Mock(pid=123)
+            with mock.patch.object(sourceStart, 'find_listen_pid_by_port', return_value=None), \
+                    mock.patch.object(sourceStart, 'find_npm', return_value='npm'), \
+                    mock.patch.object(sourceStart.subprocess, 'Popen', return_value=process) as popen_mock, \
+                    mock.patch.object(sourceStart, 'write_pid'), \
+                    mock.patch('builtins.print'):
+                self.assertIs(process, sourceStart.start_frontend(base))
+            self.assertEqual(str(web_dir), popen_mock.call_args.kwargs['cwd'])
+            popen_mock.call_args.kwargs['stdout'].close()
 
 
 class DatabaseMigrationTests(TemporaryWorkingDirectory):
@@ -391,6 +418,7 @@ class NotificationTests(unittest.TestCase):
 
     def test_refresh_deduplicates_before_openlist_calls(self):
         refreshService._recent_refresh.clear()
+        refreshService._recent_refresh['stale'] = 1
         client = mock.Mock()
         client.fileListApi.return_value = {}
         job = {
@@ -412,6 +440,7 @@ class NotificationTests(unittest.TestCase):
             }, 2)
         self.assertEqual(2, client.fileListApi.call_count)
         self.assertEqual('Directory refresh completed', send_mock.call_args.args[1])
+        self.assertNotIn('stale', refreshService._recent_refresh)
         refreshService._recent_refresh.clear()
 
 
