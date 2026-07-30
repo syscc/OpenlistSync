@@ -20,8 +20,8 @@
 - 前端源码运行：
 
 ```bash
-cd frontend
-VUE_APP_BASE_API=/svr npm run dev -- --host 0.0.0.0 --port 8080
+cd web
+npm run dev -- --host 0.0.0.0 --port 8080
 ```
 
 - 也可以使用源码启动脚本：
@@ -40,7 +40,7 @@ VUE_APP_BASE_API=/svr npm run dev -- --host 0.0.0.0 --port 8080
 PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY'
 from pathlib import Path
 for path in Path('.').rglob('*.py'):
-    if any(part in {'.venv', 'frontend', '.git'} for part in path.parts):
+    if any(part in {'.venv', 'web', '.git'} for part in path.parts):
         continue
     compile(path.read_text(encoding='utf-8'), str(path), 'exec')
 print('python syntax ok')
@@ -50,7 +50,7 @@ PY
 - 前端修改后使用 dev server 编译验证，不用 production build：
 
 ```bash
-cd frontend
+cd web
 npm run dev -- --host 127.0.0.1 --port 8091
 ```
 
@@ -76,9 +76,9 @@ curl -s -o /dev/null -w 'frontend:%{http_code}\n' http://127.0.0.1:8080/
 ## 前后端注意事项
 
 - 本地访问 `8080` 是前端源码 dev server，能实时看到源码 UI 改动。
-- 本地访问 `8023` 是后端托管的静态前端，读取 `frontend/dist` 或 `front`，在未执行前端 build 时可能仍是旧 UI。
+- 本地访问 `8023` 是后端托管的静态前端，读取 `web/dist` 或 `front`，在未执行前端 build 时可能仍是旧 UI。
 - Docker 默认只暴露 `8023`，发布镜像时需要通过构建流程生成并打入新的前端静态产物。
-- 前端 API 默认走 `/svr`，dev server 通过 `frontend/vue.config.js` 代理到后端 `8023`。
+- 前端 API 默认走 `/svr`，Vite dev server 通过 `web/vite.config.js` 代理到后端 `8023`。
 
 ## 数据库与配置
 
@@ -91,5 +91,5 @@ curl -s -o /dev/null -w 'frontend:%{http_code}\n' http://127.0.0.1:8080/
 
 - 不要回滚用户已有改动。
 - 不要使用 `git reset --hard` 或 `git checkout --` 这类破坏性命令，除非用户明确要求。
-- `.venv/`、`frontend/node_modules/`、`data/` 等运行环境或本地状态不应作为功能改动提交。
+- `.venv/`、`frontend/node_modules/`、`web/node_modules/`、`data/` 等运行环境或本地状态不应作为功能改动提交。
 - 手动编辑文件优先使用 `apply_patch`。

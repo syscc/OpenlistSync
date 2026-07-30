@@ -42,6 +42,39 @@ notify_config_invalid: 通知配置不完整或格式错误
 notify_method_invalid: 不支持的通知方式
 notify_response_invalid: 通知服务返回了无法识别的响应
 notify_request_failed: 通知服务请求失败
+media_no_running_task: 没有正在执行的任务
+media_default_engine_required: 请先配置默认 OpenList 引擎
+media_preview_path_required: 请进入具体媒体目录后再预览命名
+media_search_required: 请输入电影或电视剧名称
+media_engine_required: 请至少选择一个 OpenList 引擎
+media_path_required: 请先选择或输入需要命名的媒体路径
+media_tmdb_config_required: 请先配置 TMDb API Key 或 Bearer Token
+media_task_aborted: 任务已中止
+media_root_rename_pending: 等待根目录重命名
+media_duplicate_target: 目标冲突，执行时只会保留一个目标名，其余默认跳过并保留源文件
+sync_submit_title: 同步任务已提交
+sync_submit_src: 来源路径 - {}
+sync_submit_dst: 目标路径 - {}
+webhook_no_engine_title: Webhook 已收到，但未配置引擎
+webhook_no_engine_content: 请在引擎管理中添加 OpenList 地址与 Token
+webhook_error_title: Webhook 错误
+webhook_engine_not_found: "未找到名称为 '{}' 的 OpenList 引擎"
+webhook_source_missing_title: Webhook 已收到，源不存在，已跳过
+webhook_source_path: 源路径 - {}
+webhook_no_targets_title: Webhook 已收到，但未配置同步集合
+webhook_no_targets_content: 请设置 DST_* 或 SYNC_* 环境变量
+refresh_success_title: 目录刷新完成
+refresh_failure_title: 目录刷新失败
+refresh_success_content: "全部目录刷新成功：\n{}"
+refresh_failure_content: "以下目录刷新失败：\n{}"
+media_notify_title: 媒体名字刮削{} - OpenListSync
+media_notify_task_name: 任务名称：{}
+media_notify_engine: "OpenList：{}"
+media_notify_path: 媒体路径：{}
+media_notify_status: 任务状态：{}
+media_notify_counts: 共 {} 个重命名项，成功 {} 个，跳过 {} 个，失败 {} 个。
+media_notify_duration: 本次耗时：{}
+media_notify_error: 失败原因：{}
 log_del_success: 日志文件 {} 已被成功删除
 log_del_fail: 日志文件 {} 删除失败，原因为：{}
 log_rename_start: 日志定时更名任务启动成功

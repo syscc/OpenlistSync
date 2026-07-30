@@ -1,5 +1,5 @@
 <div align="center">
-  <a href=""><img width="200px" alt="logo" src="https://github.com/syscc/OpenlistSync/raw/main/frontend/public/logo/logo.svg"/></a>
+  <a href=""><img width="200px" alt="logo" src="https://github.com/syscc/OpenlistSync/raw/main/web/public/logo.svg"/></a>
   <p><em>OpenlistSync是一个适用于OpenList的自动化同步工具 Sync for OpenList</em></p>
   <div>
     <a href="https://github.com/syscc/OpenlistSync/blob/main/LICENSE">
@@ -28,7 +28,7 @@
 
 ---
 
-本程序修改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync) V0.3.2
+本程序修改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync) V0.4.0
 
 在原有的项目基础上主要改动，新增通过 [MoviePilot](https://github.com/jxxghp/MoviePilot) 入库通知自动同步下载的影视文件到 [OpenList](https://github.com/OpenListTeam/OpenList)；并刷新，利用 [OpenList](https://github.com/OpenListTeam/OpenList) 的 `Strm` 驱动自动更新 Strm 文件自动入库。
 
@@ -134,8 +134,9 @@
   * linux-ppc64le
 * [Github Actions](https://docs.github.com/zh/actions)自动打包与发布构建好的可执行程序，过程公开透明，无投毒风险
 * 支持Docker，下载即用
+* 前端使用 Vue 3、Vite、Element Plus 与 Pinia，支持亮色/暗色主题、简体中文/English 切换和独立移动端交互；后端响应与任务通知跟随所选语言
 * 干净卸载，不用的时候删掉即可，无任何残留或依赖，不影响系统里其他程序
-* 密码加密不可逆，永远不会泄露您的密码，敏感信息均被加密，支持重置密码
+* 登录密码不可逆散列保存，支持重置密码，也可在首次创建数据库时通过配置文件或环境变量设置初始管理员密码
 * 完全离线运行（仅连接 OpenList），永不上传用户隐私
 * 完善的错误处理，稳定可靠，逻辑自洽；可能出错，但永不崩溃（我猜的）
 * 完善的日志，所有错误都会被记录
@@ -143,11 +144,12 @@
 * 作业管理，可以新增/删除/启用/禁用/编辑/手动执行作业
 * 媒体名字刮削，可以复用已配置的 OpenList 引擎，统一配置默认引擎、TMDb、命名模板与改名线程，按 MoviePilot 风格浏览目录、搜索/填写 TMDb ID、预览命名并后台执行媒体目录/文件命名整理；支持根目录最后重命名、强制刷新缓存、任务进度、终止任务、手动执行历史任务、保留重命名日志和任务结果通知
 * 支持排除项规则，可以排除指定目录或文件不同步
+* 支持作业级文件大小过滤，可分别设置最小值和最大值；等于边界的文件仍参与同步
 * 仅新增、全同步、移动三种模式
 * 定时同步支持间隔、`cron`、手动调用
 * 同步进度、总体进度、同步速度、实时同步文件、预估时间等实时可视化查看
 * 存储可控，合理配置任务记录与日志保留天数，可以控制本程序所占用存储在可控范围内
-* 支持钉钉群机器人或server酱通知，可在任务成功或失败后发送通知
+* 支持自定义请求、Server酱、钉钉群机器人、企业微信应用消息和 Lark 群机器人通知
 
 ## 媒体名字刮削
 
@@ -244,6 +246,8 @@ services:
 
 ```ini
 [OpenlistSync]
+# 初始管理员密码，仅首次创建数据库时生效；RANDOM 或空值表示随机生成
+password=RANDOM
 # 运行端口号
 port=8023
 # 登录有效期，单位天
@@ -264,6 +268,7 @@ task_timeout=72
 
 | config.ini    | Docker环境变量    | 描述                                                         | 默认值           |
 | ------------- | ----------------- | ------------------------------------------------------------ |---------------|
+| password      | OPENLISTSYNC_PASSWORD | 初始管理员密码，仅首次创建数据库时生效；`RANDOM` 或空值表示随机生成；兼容 `TAO_PASSWORD`、`TAO_PASSWD` | RANDOM |
 | port          | OPENLISTSYNC_PORT     | 运行端口号                                                   | 8023          |
 | expires       | OPENLISTSYNC_EXPIRES  | 登录有效期，单位天                                           | 2             |
 | log_level     | OPENLISTSYNC_LOG_LEVEL | 日志等级：0-DEBUG，1-INFO，2-WARNING，3-ERROR，4-CRITICAL；数值越大，产生的日志越少，推荐1或2 | 1             |
@@ -316,8 +321,10 @@ OpenlistSync/
 ├── dockerfiles/                    # 多平台/不同构建方式的 Dockerfile
 ├── common/                         # 通用配置、数据库连接、日志、语言与工具方法
 │   ├── config.py                   # 读取 data/config.ini、环境变量与默认配置
+│   ├── locales.py                  # YAML 语言包加载、语言识别与回退
 │   ├── sqlBase.py                  # SQLite 基础访问封装
 │   └── sqlInit.py                  # 数据库初始化与版本迁移
+├── locales/                        # 后端简体中文与 English 语言包
 ├── controller/                     # Tornado API 控制器
 │   ├── baseController.py           # 登录态校验与统一响应封装
 │   ├── jobController.py            # 作业、任务与引擎接口
@@ -341,16 +348,18 @@ OpenlistSync/
 │   ├── notify/                     # 通知发送
 │   ├── system/                     # 启动初始化、日志清理、用户与系统配置
 │   └── webhook/                    # Webhook 解析、自动建作业与刷新
-├── frontend/                       # Vue 2 前端源码
+├── frontend/                       # 旧 Vue 2 前端，保留用于升级回退参考，不再作为运行入口
+├── web/                            # 当前 Vue 3 + Vite 前端源码
 │   ├── public/                     # 前端公共静态资源
 │   ├── src/
 │   │   ├── api/                    # 前端 API 封装
 │   │   ├── router/                 # 前端路由
-│   │   ├── store/                  # Vuex 状态
+│   │   ├── store/                  # Pinia 状态
 │   │   ├── utils/                  # 前端工具与枚举
 │   │   └── views/                  # 页面与组件，含作业管理、媒体名字刮削、全局排除项、系统设置等
 │   ├── package.json                # 前端依赖与脚本
-│   └── vue.config.js               # Vue CLI 开发服务与代理配置
+│   └── vite.config.js              # Vite 开发服务与代理配置
+├── tests/                          # 后端迁移、配置、同步过滤与通知测试
 ├── README/                         # README 引用的截图资源
 ├── doc/                            # 文档与历史 changelog
 └── data/                           # 运行时数据目录，本地生成，不建议提交
@@ -366,6 +375,8 @@ OpenlistSync/
 - `GET/POST/PUT/DELETE /svr/openlist` 引擎管理（列表、子目录、增删改）
 - `GET/POST/PUT/DELETE /svr/job` 作业管理（列表、详情、手动执行、启用/禁用、中止、删除）
 - `GET/POST/PUT/DELETE /svr/notify` 通知配置（列表、增删改、测试）
+- `GET/POST /svr/language` 后端默认语言读取与修改
+- `GET/POST /svr/system/config` 系统配置与全局排除项
 - `GET/POST/PUT /svr/media/scraping` 媒体名字刮削（配置、浏览 OpenList 路径、TMDb 搜索、预览命名、后台执行、任务列表、任务详情、终止与手动执行）
 - `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）。支持参数 `apikey`（URL参数或Body参数），若服务端配置了 `WEBHOOK_APIKEY` 则必须提供且匹配。
 

@@ -12,6 +12,7 @@ data/**
 
 # Frontend build/dev noise
 frontend/node_modules/
+web/node_modules/
 
 # IDE
 .vscode/

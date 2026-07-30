@@ -448,7 +448,7 @@ def _build_task_items(task_id, preview_items, stdout, stderr):
                 if root_pair in root_output:
                     result = {'status': 2, 'errMsg': '', 'rawStatus': 'renamed by root rename'}
                 else:
-                    result = {'status': 0, 'errMsg': '等待根目录重命名', 'rawStatus': ''}
+                    result = {'status': 0, 'errMsg': G('media_root_rename_pending'), 'rawStatus': ''}
         elif src == target:
             result = {'status': 3, 'errMsg': '', 'rawStatus': 'skip: already named'}
         else:
@@ -890,7 +890,7 @@ def _initial_task_items(task_id, preview_items):
             'year': str(item.get('year') or ''),
             'season': str(item.get('season') or ''),
             'episode': str(item.get('episode') or ''),
-            'errMsg': '目标冲突，执行时只会保留一个目标名，其余默认跳过并保留源文件' if item.get('duplicateTarget') else '',
+            'errMsg': G('media_duplicate_target') if item.get('duplicateTarget') else '',
         })
     rows.extend(_root_rename_rows(task_id, preview_items))
     return rows
@@ -1020,7 +1020,7 @@ def _update_run_task(task_id, req, config, result, elapsed, aborted=False):
         for row in rows:
             if row['status'] in (0, 1):
                 row['status'] = 7
-                row['errMsg'] = '任务已中止'
+                row['errMsg'] = G('media_task_aborted')
     success_num = len([row for row in rows if row['status'] == 2])
     fail_num = len([row for row in rows if row['status'] == 7])
     skip_num = len([row for row in rows if row['status'] == 3])
@@ -1046,7 +1046,7 @@ def _update_run_task(task_id, req, config, result, elapsed, aborted=False):
         'rootRenames': json.dumps(result.get('rootRenames') if isinstance(result, dict) else [], ensure_ascii=False),
         'stdout': stdout[-20000:],
         'stderr': stderr[-20000:],
-        'errMsg': '任务已中止' if aborted else item.get('error') or '',
+        'errMsg': G('media_task_aborted') if aborted else item.get('error') or '',
         'request': task.get('request') or json.dumps(_task_request(req, config), ensure_ascii=False),
         'updateTime': int(time.time()),
     })
@@ -1073,7 +1073,7 @@ def _run_task_background(task_id, req, abort_event=None):
                 and normalize_openlist_path(plan.src_path) != normalize_openlist_path(plan.target_path)
             ):
                 status_code = 0
-                err_msg = '等待根目录重命名'
+                err_msg = G('media_root_rename_pending')
             mediaScrapingMapper.updateTaskItemStatus(
                 task_id,
                 normalize_openlist_path(plan.src_path),
@@ -1118,7 +1118,7 @@ def _run_task_background(task_id, req, abort_event=None):
                 'skipNum': skip_num,
                 'total': max(_to_int(task.get('total'), 0, 0), success_num + fail_num + skip_num),
                 'elapsed': elapsed,
-                'errMsg': '任务已中止' if aborted else str(e),
+                'errMsg': G('media_task_aborted') if aborted else str(e),
                 'updateTime': int(time.time()),
             })
             mediaScrapingMapper.updateTask(task)
@@ -1270,23 +1270,27 @@ def _send_task_notify(task, status=None, err_msg=''):
     status_names = G('task_status')
     status_name = status_names[status] if 0 <= status < len(status_names) else str(status)
     task_name = task.get('taskName') or _task_name_from_items([], task.get('path'))
-    title = f"媒体名字刮削{status_name} - OpenListSync"
+    title = G('media_notify_title').format(status_name)
     hours, minutes, seconds = commonUtils.convertSeconds(int(float(task.get('elapsed') or 0)))
     duration_text = G('hms').format(hours, minutes, seconds)
-    content = (
-        f"任务名称：{task_name}\n"
-        f"OpenList：{task.get('openlistName') or task.get('openlistId') or '-'}\n"
-        f"媒体路径：{task.get('path') or '-'}\n"
-        f"任务状态：{status_name}\n\n"
-        f"共 {task.get('total') or 0} 个重命名项，"
-        f"成功 {task.get('successNum') or 0} 个，"
-        f"跳过 {task.get('skipNum') or 0} 个，"
-        f"失败 {task.get('failNum') or 0} 个。\n\n"
-        f"本次耗时：{duration_text}"
-    )
+    content = "\n".join([
+        G('media_notify_task_name').format(task_name),
+        G('media_notify_engine').format(task.get('openlistName') or task.get('openlistId') or '-'),
+        G('media_notify_path').format(task.get('path') or '-'),
+        G('media_notify_status').format(status_name),
+        '',
+        G('media_notify_counts').format(
+            task.get('total') or 0,
+            task.get('successNum') or 0,
+            task.get('skipNum') or 0,
+            task.get('failNum') or 0,
+        ),
+        '',
+        G('media_notify_duration').format(duration_text),
+    ])
     err_msg = err_msg or task.get('errMsg') or ''
     if err_msg:
-        content += f"\n失败原因：{err_msg}"
+        content += "\n" + G('media_notify_error').format(err_msg)
     logger = logging.getLogger()
     for notify in notify_list:
         try:
@@ -1332,7 +1336,7 @@ def rerunTask(req):
     task_id = _to_int(req.get('taskId') or req.get('id'), 0, 0)
     task = mediaScrapingMapper.getTaskById(task_id)
     if not task:
-        raise Exception('任务不存在')
+        raise Exception(G('task_not_found'))
     task_req = None
     if task.get('request'):
         try:
@@ -1360,7 +1364,7 @@ def rerunJob(req):
     job_id = _to_int(req.get('jobId') or req.get('id'), 0, 0)
     job = mediaScrapingMapper.getJobById(job_id)
     if not job:
-        raise Exception('任务不存在')
+        raise Exception(G('task_not_found'))
     task_req = None
     if job.get('request'):
         try:
@@ -1388,13 +1392,13 @@ def abortTask(req):
     task_id = _to_int(req.get('taskId') or req.get('id'), 0, 0)
     task = mediaScrapingMapper.getTaskById(task_id)
     if not task or _to_int(task.get('status'), 0, 0) != 1:
-        raise Exception('没有正在执行的任务')
+        raise Exception(G('media_no_running_task'))
     with MEDIA_ABORT_LOCK:
         event = MEDIA_ABORT_EVENTS.get(task_id)
         if event:
             event.set()
     task['status'] = 4
-    task['errMsg'] = '任务已中止'
+    task['errMsg'] = G('media_task_aborted')
     task['updateTime'] = int(time.time())
     mediaScrapingMapper.updateTask(task)
     mediaScrapingMapper.updateTaskItemsStatus(task_id, 7)
@@ -1407,7 +1411,7 @@ def abortJob(req):
     job_id = _to_int(req.get('jobId') or req.get('id'), 0, 0)
     task = mediaScrapingMapper.getRunningTaskByJobId(job_id)
     if not task:
-        raise Exception('没有正在执行的任务')
+        raise Exception(G('media_no_running_task'))
     return abortTask({'taskId': task['id']})
 
 
@@ -1480,7 +1484,7 @@ def _selected_openlist_id(req, config):
     if not openlist_id:
         openlist_id = _to_int(config.get('defaultOpenlistId'), 0, 0)
     if not openlist_id:
-        raise Exception('请先配置默认OpenList引擎')
+        raise Exception(G('media_default_engine_required'))
     return openlist_id
 
 
@@ -1522,7 +1526,7 @@ def previewNaming(req):
     openlist_id = _selected_openlist_id(req, config)
     path = normalize_openlist_path(str(req.get('path') or ''))
     if path == '/':
-        raise Exception('请进入具体媒体目录后再预览命名')
+        raise Exception(G('media_preview_path_required'))
     media_type = str(req.get('type') or 'auto').lower()
     if media_type not in {'auto', 'movie', 'tv'}:
         media_type = 'auto'
@@ -1550,7 +1554,7 @@ def previewNaming(req):
     client.login()
     tmdb_client = build_tmdb_client(runner_config)
     if (runner_config.get('tmdb') or {}).get('required', True) and not tmdb_client.enabled():
-        raise TMDbError('请先配置 TMDb API Key 或 Bearer Token')
+        raise TMDbError(G('media_tmdb_config_required'))
 
     extensions = {ext.lower() for ext in config['mediaExtensions']}
     scan_limit = preview_limit + 1 if preview_limit else 0
@@ -1623,7 +1627,7 @@ def searchTmdb(req):
     config = _normalize_config(req.get('config') or getConfig())
     query = str(req.get('query') or '').strip()
     if not query:
-        raise Exception('请输入电影或电视剧名称')
+        raise Exception(G('media_search_required'))
     media_type = str(req.get('type') or 'auto').lower()
     if media_type not in {'auto', 'movie', 'tv'}:
         media_type = 'auto'
@@ -1635,7 +1639,7 @@ def searchTmdb(req):
     }, {'url': '', 'token': ''})
     tmdb_client = build_tmdb_client(runner_config)
     if not tmdb_client.enabled():
-        raise TMDbError('请先配置 TMDb API Key 或 Bearer Token')
+        raise TMDbError(G('media_tmdb_config_required'))
 
     if media_type == 'movie':
         endpoint = 'search/movie'
@@ -1688,11 +1692,11 @@ def runScraping(req, abort_event=None, progress_callback=None, root_progress_cal
     if preview_plans:
         return runScrapingWithPreviewPlans(req, config, preview_plans, abort_event, progress_callback, root_progress_callback)
     if not config['openlistIds']:
-        raise Exception('请至少选择一个OpenList引擎')
+        raise Exception(G('media_engine_required'))
     if not config['rules']:
         path = str(req.get('path') or '').strip()
         if not path:
-            raise Exception('请先选择或输入需要命名的媒体路径')
+            raise Exception(G('media_path_required'))
         media_type = str(req.get('type') or 'auto').lower()
         if media_type not in {'auto', 'movie', 'tv'}:
             media_type = 'auto'
@@ -1756,7 +1760,7 @@ def runScraping(req, abort_event=None, progress_callback=None, root_progress_cal
 
 def runScrapingWithPreviewPlans(req, config, plans, abort_event=None, progress_callback=None, root_progress_callback=None):
     if not config['openlistIds']:
-        raise Exception('请至少选择一个OpenList引擎')
+        raise Exception(G('media_engine_required'))
     apply = _to_bool(req.get('apply'), False)
     overwrite = config['overwrite']
     dry_run = config['dryRun']

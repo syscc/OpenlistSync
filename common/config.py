@@ -57,6 +57,8 @@ def getConfig():
                         key_lower = key.lower()
                         if key_lower in {'password', 'openlistsync_password', 'tao_password', 'tao_passwd'}:
                             password = val
+                        elif key_lower == 'task_timeout':
+                            sCfg['timeout'] = int(val)
                         elif key_lower in sCfg:
                             sCfg[key_lower] = int(val)
                         else:

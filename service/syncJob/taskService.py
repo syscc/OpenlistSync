@@ -106,7 +106,9 @@ def getTaskList(req):
     if needUpdateList:
         updateThread = threading.Thread(target=jobMapper.updateJobTaskNumMany, args=(needUpdateList,))
         updateThread.start()
-    jobTaskList['taskList'] = jobTaskList.pop('list')
+    data_list = jobTaskList.pop('list')
+    jobTaskList['taskList'] = data_list
+    jobTaskList['dataList'] = data_list
     return jobTaskList
 
 
@@ -145,5 +147,7 @@ def getTaskItemList(req):
         res['jobId'] = jobMapper.getJobByTaskId(req['taskId'])['id']
     except Exception:
         res['jobId'] = None
-    res['taskItemList'] = res.pop('list')
+    data_list = res.pop('list')
+    res['taskItemList'] = data_list
+    res['dataList'] = data_list
     return res

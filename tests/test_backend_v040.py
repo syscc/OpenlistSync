@@ -10,9 +10,11 @@ from pathlib import Path
 from unittest import mock
 
 from common import LNG, config, locales, sqlInit
+from service.mediaScraping import mediaScrapingService
 from service.notify import notifyService
-from service.syncJob import jobClient, jobService
+from service.syncJob import jobClient, jobService, taskService
 from service.system import onStart
+from service.webhook import refreshService, webhookService
 
 
 CURRENT_DB_VERSION = 260729
@@ -78,6 +80,11 @@ class LocalizationAndConfigTests(TemporaryWorkingDirectory):
         with mock.patch.dict(os.environ, {'OPENLISTSYNC_PASSWORD': 'env-password'}, clear=False):
             config.sysConfig = None
             self.assertEqual('file-password', config.getConfig()['server']['password'])
+
+    def test_config_file_task_timeout_alias_is_honored(self):
+        Path('data/config.ini').write_text('[OpenlistSync]\ntask_timeout=36\n', encoding='utf-8')
+        config.sysConfig = None
+        self.assertEqual(36, config.getConfig()['server']['timeout'])
 
     def test_startup_logs_generated_password_but_not_configured_password(self):
         logger = logging.getLogger()
@@ -251,6 +258,33 @@ class JobFilteringTests(unittest.TestCase):
         self.assertEqual(15 * 60, scheduler.add_job.call_args.kwargs['misfire_grace_time'])
 
 
+class ApiCompatibilityTests(unittest.TestCase):
+    def test_paged_job_responses_include_legacy_and_vue3_list_names(self):
+        jobs = [{'id': 1}]
+        with mock.patch.object(jobService.jobMapper, 'getJobList', return_value={
+                'list': jobs, 'count': 1}):
+            result = jobService.getJobList({})
+        self.assertEqual(jobs, result['jobList'])
+        self.assertIs(result['jobList'], result['dataList'])
+
+        tasks = [{'id': 2, 'status': 2, 'taskNum': json.dumps({
+            'waitNum': 0, 'runningNum': 0, 'successNum': 1,
+            'failNum': 0, 'otherNum': 0, 'allNum': 1})}]
+        with mock.patch.object(taskService.jobMapper, 'getJobTaskList', return_value={
+                'list': tasks, 'count': 1}):
+            result = taskService.getTaskList({})
+        self.assertEqual(tasks, result['taskList'])
+        self.assertIs(result['taskList'], result['dataList'])
+
+        task_items = [{'id': 3}]
+        with mock.patch.object(taskService.jobMapper, 'getJobTaskItemList', return_value={
+                'list': task_items, 'count': 1}), mock.patch.object(
+                taskService.jobMapper, 'getJobByTaskId', return_value={'id': 1}):
+            result = taskService.getTaskItemList({'taskId': 2})
+        self.assertEqual(task_items, result['taskItemList'])
+        self.assertIs(result['taskItemList'], result['dataList'])
+
+
 class FakeResponse:
     def __init__(self, payload, status_code=200):
         self.payload = payload
@@ -305,6 +339,80 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual('interactive', payload['msg_type'])
         self.assertEqual('Title', payload['card']['header']['title']['content'])
         self.assertEqual('**Content**', payload['card']['elements'][0]['content'])
+
+    def test_media_notification_uses_request_language(self):
+        LNG.set_context_lang('en')
+        task = {
+            'taskName': 'Modern Family (2009)',
+            'openlistName': 'Primary OpenList',
+            'path': '/115/Modern Family (2009)',
+            'status': 2,
+            'total': 3,
+            'successNum': 2,
+            'skipNum': 1,
+            'failNum': 0,
+            'elapsed': 5,
+        }
+        with mock.patch.object(mediaScrapingService.notifyService, 'getNotifyList', return_value=[{'id': 1}]), \
+                mock.patch.object(mediaScrapingService.notifyService, 'sendNotify') as send_mock:
+            mediaScrapingService._send_task_notify(task)
+        title, content = send_mock.call_args.args[1:3]
+        self.assertEqual('Media renaming success - OpenListSync', title)
+        self.assertIn('Task: Modern Family (2009)', content)
+        self.assertIn('3 rename items: 2 succeeded, 1 skipped, and 0 failed.', content)
+
+    def test_webhook_api_key_mismatch_is_redacted_from_logs(self):
+        logger = logging.getLogger()
+        with mock.patch.dict(os.environ, {'WEBHOOK_APIKEY': 'expected-secret'}, clear=True), \
+                mock.patch.object(logger, 'warning') as warning:
+            result = webhookService.handleWebhook({'apikey': 'provided-secret'})
+        self.assertEqual('ignored: apikey mismatch', result['job'])
+        message = warning.call_args.args[0]
+        self.assertNotIn('expected-secret', message)
+        self.assertNotIn('provided-secret', message)
+
+    def test_webhook_without_openlist_sends_localized_notification(self):
+        class ImmediateTimer:
+            def __init__(self, delay, callback):
+                self.callback = callback
+
+            def start(self):
+                self.callback()
+
+        with mock.patch.dict(os.environ, {'WEBHOOK_DELAY': '0'}, clear=True), \
+                mock.patch.object(webhookService.threading, 'Timer', ImmediateTimer), \
+                mock.patch('mapper.jobMapper.getJobList', return_value=[]), \
+                mock.patch('mapper.openlistMapper.getOpenlistList', return_value=[]), \
+                mock.patch.object(webhookService.notifyService, 'getNotifyList', return_value=[{'id': 1}]), \
+                mock.patch.object(webhookService.notifyService, 'sendNotify') as send_mock:
+            webhookService.handleWebhook({'title': 'Modern Family (2009) 已入库'})
+        self.assertEqual('Webhook received, but no engine is configured', send_mock.call_args.args[1])
+        self.assertIn('Add an OpenList URL', send_mock.call_args.args[2])
+
+    def test_refresh_deduplicates_before_openlist_calls(self):
+        refreshService._recent_refresh.clear()
+        client = mock.Mock()
+        client.fileListApi.return_value = {}
+        job = {
+            'openlistId': 1,
+            'remark': 'Modern Family (2009)',
+            'srcPath': '/source/Modern Family (2009)/',
+            'dstPath': '/target/Modern Family (2009)/',
+        }
+        with mock.patch.dict(os.environ, {}, clear=True), \
+                mock.patch.object(refreshService.openlistService, 'getClientById', return_value=client), \
+                mock.patch.object(refreshService.notifyService, 'getNotifyList', return_value=[{'id': 1}]), \
+                mock.patch.object(refreshService.notifyService, 'sendNotify') as send_mock:
+            refreshService.refresh_after_task(job, 2)
+            refreshService.refresh_after_task(job, 2)
+            refreshService.refresh_after_task({
+                **job,
+                'srcPath': '/other/Modern Family (2009)/',
+                'dstPath': '/other-target/Modern Family (2009)/',
+            }, 2)
+        self.assertEqual(2, client.fileListApi.call_count)
+        self.assertEqual('Directory refresh completed', send_mock.call_args.args[1])
+        refreshService._recent_refresh.clear()
 
 
 if __name__ == '__main__':

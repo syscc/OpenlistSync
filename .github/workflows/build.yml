@@ -50,23 +50,23 @@ jobs:
       - name: 检出仓库代码
         uses: actions/checkout@v4
 
-      - name: 安装Node.js 14.x
+      - name: 安装Node.js 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: "14.x"
+          node-version: "22.x"
 
       - name: 安装依赖并构建前端
         run: |
-          sed -i "s/__version_placeholder__/$VERSION/g" frontend/src/views/page/setting/index.vue
-          cd frontend
-          npm install
+          sed -i "s/__version_placeholder__/$VERSION/g" web/src/locales/zh-CN.yaml web/src/locales/en.yaml
+          cd web
+          npm ci
           npm run build
 
       - name: 上传artifact
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-dist
-          path: frontend/dist
+          name: web-dist
+          path: web/dist
           retention-days: 1
 
   build-docker:
@@ -110,8 +110,8 @@ jobs:
       - name: 下载前端
         uses: actions/download-artifact@v4
         with:
-          name: frontend-dist
-          path: frontend/dist
+          name: web-dist
+          path: web/dist
 
       - id: build-image
         name: 构建docker镜像
@@ -207,8 +207,8 @@ jobs:
       - name: 下载前端
         uses: actions/download-artifact@v4
         with:
-          name: frontend-dist
-          path: frontend/dist
+          name: web-dist
+          path: web/dist
 
       - name: 设置python环境
         uses: actions/setup-python@v5
@@ -259,8 +259,8 @@ jobs:
       - name: 下载前端
         uses: actions/download-artifact@v4
         with:
-          name: frontend-dist
-          path: frontend/dist
+          name: web-dist
+          path: web/dist
 
       - name: 设置python环境
         uses: actions/setup-python@v5

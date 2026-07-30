@@ -2,6 +2,7 @@ import time
 import re
 import threading
 import os
+from common.LNG import G, set_context_lang
 from service.notify import notifyService
 
 
@@ -35,7 +36,7 @@ def handleWebhook(req):
         if req_key != api_key_env:
             try:
                 import logging
-                logging.getLogger().warning(f"Webhook ignored: apikey mismatch. Expecting configured key, got '{req_key}'")
+                logging.getLogger().warning("Webhook ignored: apikey mismatch")
             except Exception:
                 pass
             result['job'] = 'ignored: apikey mismatch'
@@ -105,6 +106,8 @@ def handleWebhook(req):
         def _trigger():
             nonlocal remark
             try:
+                if req.get('__lang'):
+                    set_context_lang(req['__lang'])
                 import logging
                 lg = logging.getLogger()
                 try:
@@ -125,14 +128,16 @@ def handleWebhook(req):
                     from mapper import openlistMapper
                     openlists = openlistMapper.getOpenlistList()
                     if not openlists:
-                        return
-                    if not openlists:
                         try:
                             notify_list = notifyService.getNotifyList(True)
                             if notify_list:
                                 for n in notify_list:
                                     try:
-                                        notifyService.sendNotify(n, 'Webhook已收到，但未配置引擎', '请在引擎管理中添加OpenList地址与Token', False)
+                                        notifyService.sendNotify(
+                                            n,
+                                            G('webhook_no_engine_title'),
+                                            G('webhook_no_engine_content'),
+                                            False)
                                     except Exception:
                                         pass
                         except Exception:
@@ -155,7 +160,11 @@ def handleWebhook(req):
                                 if notify_list:
                                     for n in notify_list:
                                         try:
-                                            notifyService.sendNotify(n, 'Webhook 错误', f"未找到名称为 '{webhook_engine_name}' 的OpenList引擎", False)
+                                            notifyService.sendNotify(
+                                                n,
+                                                G('webhook_error_title'),
+                                                G('webhook_engine_not_found').format(webhook_engine_name),
+                                                False)
                                         except Exception:
                                             pass
                             except Exception:
@@ -226,8 +235,9 @@ def handleWebhook(req):
                         try:
                             notify_list = notifyService.getNotifyList(True)
                             if notify_list:
-                                title2 = 'Webhook已收到，源不存在，已跳过'
-                                content2 = f"源路径- {media_root.rstrip('/')}/{remark}"
+                                title2 = G('webhook_source_missing_title')
+                                content2 = G('webhook_source_path').format(
+                                    f"{media_root.rstrip('/')}/{remark}")
                                 for n in notify_list:
                                     try:
                                         notifyService.sendNotify(n, title2, content2, False)
@@ -339,7 +349,11 @@ def handleWebhook(req):
                                 if notify_list:
                                     for n in notify_list:
                                         try:
-                                            notifyService.sendNotify(n, 'Webhook已收到，但未配置同步集合', '请设置 DST_* 或 SYNC_* 环境变量', False)
+                                            notifyService.sendNotify(
+                                                n,
+                                                G('webhook_no_targets_title'),
+                                                G('webhook_no_targets_content'),
+                                                False)
                                         except Exception:
                                             pass
                             except Exception:

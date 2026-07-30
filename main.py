@@ -17,7 +17,7 @@ class MainIndex(RequestHandler):
         if os.path.exists(indexPath):
             self.render(indexPath)
         else:
-            self.write("Frontend not built. Build via 'cd frontend && npm install && npm run build'.")
+            self.write("Frontend not built. Run the Vue dev server from 'web/' for source-mode development.")
 
 
 def make_app():
@@ -56,8 +56,8 @@ if __name__ == "__main__":
     else:
         if os.path.exists(os.path.join('front', 'index.html')):
             frontDir = os.path.join('front')
-        elif os.path.exists(os.path.join('frontend', 'dist', 'index.html')):
-            frontDir = os.path.join('frontend', 'dist')
+        elif os.path.exists(os.path.join('web', 'dist', 'index.html')):
+            frontDir = os.path.join('web', 'dist')
         else:
             frontDir = os.path.join('front')
     # 后端配置

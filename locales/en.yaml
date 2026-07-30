@@ -42,6 +42,39 @@ notify_config_invalid: The notification configuration is incomplete or invalid
 notify_method_invalid: Unsupported notification method
 notify_response_invalid: The notification service returned an unrecognized response
 notify_request_failed: The notification service request failed
+media_no_running_task: No task is currently running
+media_default_engine_required: Configure a default OpenList engine first
+media_preview_path_required: Open a specific media directory before previewing names
+media_search_required: Enter a movie or TV series name
+media_engine_required: Select at least one OpenList engine
+media_path_required: Select or enter a media path to rename
+media_tmdb_config_required: Configure a TMDb API Key or Bearer Token first
+media_task_aborted: Task aborted
+media_root_rename_pending: Waiting for root directory rename
+media_duplicate_target: Multiple files target the same name; one target will be kept and the remaining source files will be skipped
+sync_submit_title: Sync task submitted
+sync_submit_src: Source path - {}
+sync_submit_dst: Destination path - {}
+webhook_no_engine_title: Webhook received, but no engine is configured
+webhook_no_engine_content: Add an OpenList URL and token in Engine Management
+webhook_error_title: Webhook error
+webhook_engine_not_found: "No OpenList engine named '{}' was found"
+webhook_source_missing_title: Webhook received; source path is missing and was skipped
+webhook_source_path: Source path - {}
+webhook_no_targets_title: Webhook received, but no sync targets are configured
+webhook_no_targets_content: Configure the DST_* or SYNC_* environment variables
+refresh_success_title: Directory refresh completed
+refresh_failure_title: Directory refresh failed
+refresh_success_content: "All directories refreshed successfully:\n{}"
+refresh_failure_content: "The following directories failed to refresh:\n{}"
+media_notify_title: "Media renaming {} - OpenListSync"
+media_notify_task_name: "Task: {}"
+media_notify_engine: "OpenList: {}"
+media_notify_path: "Media path: {}"
+media_notify_status: "Status: {}"
+media_notify_counts: "{} rename items: {} succeeded, {} skipped, and {} failed."
+media_notify_duration: "Duration: {}"
+media_notify_error: "Failure reason: {}"
 log_del_success: The log file {} has been successfully deleted
 log_del_fail: "Failed to delete log file {}, reason: {}"
 log_rename_start: The log scheduled renaming task was started successfully

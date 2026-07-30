@@ -2,7 +2,9 @@ import re
 import os
 import time
 import logging
+import threading
 
+from common.LNG import G
 from service.openlist import openlistService
 from service.notify import notifyService
 
@@ -113,6 +115,7 @@ def _expand_targets(env_s, client):
 
 
 _recent_refresh = {}
+_recent_refresh_lock = threading.Lock()
 
 
 def refresh_after_task(job, status):
@@ -121,12 +124,23 @@ def refresh_after_task(job, status):
         logger.info(f"Refresh skipped: status {status} not in [2, 3]")
         return
     logger.info(f"Refresh start: job={job.get('remark')}, status={status}")
-    
+
     openlistId = int(job['openlistId'])
-    client = openlistService.getClientById(openlistId)
     remark = job.get('remark') or ''
     src = job.get('srcPath') or ''
-    dsts = (job.get('dstPath') or '').split(':') if job.get('dstPath') else []
+    dst_value = job.get('dstPath') or ''
+    job_identity = job.get('id') or f"{openlistId}:{src}:{dst_value}"
+    key = f"{job_identity}:{status}"
+    now = time.time()
+    with _recent_refresh_lock:
+        last = _recent_refresh.get(key)
+        if last and now - last < 60:
+            logger.info(f"Refresh skipped: duplicate key={key}")
+            return
+        _recent_refresh[key] = now
+
+    client = openlistService.getClientById(openlistId)
+    dsts = dst_value.split(':') if dst_value else []
     src_norm = re.sub(r"/{2,}", "/", src).rstrip('/') + '/'
     tv_src_env = (os.getenv('TVsource') or '').strip()
     mov_src_env = (os.getenv('MOVsource') or '').strip()
@@ -285,17 +299,12 @@ def refresh_after_task(job, status):
     if not notify_list:
         logger.info("Refresh notify skipped: no notify config")
         return
-    title = ('目录刷新完成 ✔️' if not fail_list_str else '目录刷新失败 ❌')
-    content = ("全部目录刷新成功：\n" + "\n".join(ok_list)) if not fail_list_str else ("以下目录刷新失败：\n" + "\n".join(fail_list_str))
+    title = G('refresh_success_title') if not fail_list_str else G('refresh_failure_title')
+    content = (G('refresh_success_content').format("\n".join(ok_list)) if not fail_list_str
+               else G('refresh_failure_content').format("\n".join(fail_list_str)))
     for notify in notify_list:
         try:
             notifyService.sendNotify(notify, title, content, False)
         except Exception as e:
             logger.error(f"Refresh notify failed: {str(e)}")
             pass
-    key = f"{remark}:{status}"
-    now = time.time()
-    last = _recent_refresh.get(key)
-    if last and now - last < 60:
-        return
-    _recent_refresh[key] = now

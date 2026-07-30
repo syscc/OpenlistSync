@@ -9,6 +9,8 @@
 # Frontend sources and dev deps (we bundle built assets via spec)
 frontend/node_modules
 frontend/src
+web/node_modules
+web/src
 
 # Local caches and logs
 __pycache__
@@ -24,4 +26,3 @@ doc
 
 # OS junk
 .DS_Store
-

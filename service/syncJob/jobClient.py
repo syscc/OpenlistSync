@@ -653,11 +653,11 @@ class JobClient:
                     dsts = [(p or '').rstrip('/') for p in (self.job['dstPath'] or '').split(':') if p]
                     lines = []
                     if src:
-                        lines.append(f"源路径- {src}")
+                        lines.append(G('sync_submit_src').format(src))
                     for d in dsts:
-                        lines.append(f"目标路径- {d}")
+                        lines.append(G('sync_submit_dst').format(d))
                     content = "\n".join(lines)
-                    title = '同步任务已提交'
+                    title = G('sync_submit_title')
                     for notify in notify_list:
                         try:
                             notifyService.sendNotify(notify, title, content, False)
