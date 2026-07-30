@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { openlistGet, jobDelete, jobGetJob, jobPost, jobPut } from "@/api/job";
 import fileSizeFilter from "./components/fileSizeFilter.vue";
@@ -385,9 +385,6 @@ const handleCurrentChange = (val) => {
   getJobList();
 };
 
-onMounted(() => {
-  getJobList();
-});
 </script>
 
 <template>
@@ -407,7 +404,7 @@ onMounted(() => {
         </el-button>
       </div>
       <div class="top-box-title">{{ $t("home.jobManagement") }}</div>
-      <menuRefresh :autoRefresh="false" :freshInterval="5273" :loading="loading" @getData="getJobList" />
+      <menuRefresh :autoRefresh="true" :freshInterval="5273" :loading="loading" @getData="getJobList" />
     </div>
 
     <el-table class="job-table" :data="jobData.dataList" height="calc(100% - 117px)" v-loading="loading">

@@ -851,6 +851,15 @@ def is_library_root_name(name: str) -> bool:
     return normalized in LIBRARY_ROOT_NAMES
 
 
+def is_media_root_for_info(name: str, info: MediaInfo) -> bool:
+    hint_title, hint_year = parse_title_year_hint(name)
+    title = clean_spaces(str(info.title or '')).lower()
+    hint = clean_spaces(hint_title).lower()
+    if not title or not hint or title != hint:
+        return False
+    return not hint_year or not info.year or hint_year == str(info.year)
+
+
 def parse_tv_episode(text: str) -> tuple[str, str, str]:
     match = TV_SEASON_EP_RE.search(text)
     if match:
@@ -1258,6 +1267,7 @@ def plan_for_file(
     info.year = year
     src_dir = normalize_openlist_path(posixpath.dirname(src_path))
     scan_root = normalize_openlist_path(scan_root)
+    scan_root_is_file = scan_root == normalize_openlist_path(src_path)
     src_dir_is_season_dir = False
     media_root = src_dir
     while is_season_dir(media_root):
@@ -1270,15 +1280,20 @@ def plan_for_file(
     media_root_is_scan_root = media_root == scan_root
     if src_dir_is_season_dir:
         library_dir = normalize_openlist_path(posixpath.dirname(media_root))
+    elif scan_root_is_file and is_media_root_for_info(posixpath.basename(media_root), info):
+        library_dir = normalize_openlist_path(posixpath.dirname(media_root))
+    elif scan_root_is_file:
+        library_dir = src_dir
     elif media_root_is_scan_root and not is_library_root_name(posixpath.basename(media_root)):
         library_dir = normalize_openlist_path(posixpath.dirname(media_root))
     elif src_dir == scan_root:
         library_dir = src_dir
     else:
         library_dir = normalize_openlist_path(posixpath.dirname(media_root))
-    if not tmdb_id and hint_title and (has_cjk(hint_title) or not info.title or info.title == "Unknown"):
+    if (not scan_root_is_file and not tmdb_id and hint_title
+            and (has_cjk(hint_title) or not info.title or info.title == "Unknown")):
         info.title = hint_title
-    if not tmdb_id and hint_year:
+    if not scan_root_is_file and not tmdb_id and hint_year:
         info.year = hint_year
 
     templates = templates or {"movie": DEFAULT_MOVIE_TEMPLATE, "tv": DEFAULT_TV_TEMPLATE}
@@ -1822,7 +1837,11 @@ def run(config: dict[str, Any], apply_override: bool | None = None, limit: int =
         media_type = (rule.get("type") or rule.get("media_type") or "movie").lower()
         if media_type not in {"movie", "tv", "auto"}:
             raise OpenListError(f"unsupported media type for {root}: {media_type}")
-        recursive = bool(rule.get("recursive", True))
+        single_file_value = rule.get("single_file", rule.get("singleFile", False))
+        single_file = single_file_value is True or str(single_file_value).strip().lower() in {
+            "1", "true", "yes", "on"
+        }
+        recursive = False if single_file else bool(rule.get("recursive", True))
         rule_refresh = bool(rule.get("refresh", refresh))
         extensions = {ext.lower() for ext in rule.get("extensions", DEFAULT_MEDIA_EXTENSIONS)}
         tmdb_id = int(rule.get("tmdb_id") or rule.get("tmdbId") or 0)
@@ -1830,7 +1849,11 @@ def run(config: dict[str, Any], apply_override: bool | None = None, limit: int =
         season_number = None if season_value is None or season_value == "" else int(season_value)
 
         collect_started = time.perf_counter()
-        files = collect_files(client, root, recursive, rule_refresh, extensions)
+        if single_file:
+            _, extension = split_ext(posixpath.basename(root))
+            files = [root] if extension.lower() in extensions else []
+        else:
+            files = collect_files(client, root, recursive, rule_refresh, extensions)
         print(f"[timing] collect_files={time.perf_counter() - collect_started:.2f}s files={len(files)} root={root}")
         plans: list[RenamePlan] = []
         plan_started = time.perf_counter()
@@ -2237,6 +2260,20 @@ def self_test() -> int:
         tmdb,
     )
     assert release_plan.target_path == "/movies/The Matrix (1999)/The Matrix.1999.BluRay.2160p.H265-FLUX.mkv"
+    loose_movie_path = "/115/临时转存/The.Matrix.1999.2160p.UHD.BluRay.HEVC-FLUX.mkv"
+    loose_movie_plan = plan_for_file(loose_movie_path, loose_movie_path, "auto", tmdb)
+    assert loose_movie_plan.target_path == (
+        "/115/临时转存/The Matrix (1999)/The Matrix.1999.BluRay.2160p.H265-FLUX.mkv"
+    )
+    assert loose_movie_plan.root_rename_from == ""
+    assert loose_movie_plan.root_rename_to == ""
+    existing_movie_path = "/115/最近接收/罪人 (2025)/罪人.2025.2160p.WEB-DL.H265.mkv"
+    existing_movie_plan = plan_for_file(existing_movie_path, existing_movie_path, "auto", tmdb)
+    assert existing_movie_plan.target_path == (
+        "/115/最近接收/罪人 (2025)/罪人.2025.WEB-DL.2160p.H265.mkv"
+    )
+    assert existing_movie_plan.root_rename_from == ""
+    assert existing_movie_plan.root_rename_to == ""
     release_info = parse_media_info("Show.S01E01.1080p.WEB.HEVC-FLUX.mkv", "tv")
     assert release_info.release_group == "FLUX"
     existing_season_plan = plan_for_file(

@@ -211,10 +211,12 @@ def _normalize_rules(rules):
         media_type = str(rule.get('type') or 'auto').strip().lower()
         if media_type not in {'auto', 'movie', 'tv'}:
             media_type = 'auto'
+        single_file = _to_bool(rule.get('singleFile', rule.get('single_file')), False)
         result.append({
             'path': path,
             'type': media_type,
-            'recursive': _to_bool(rule.get('recursive'), True),
+            'recursive': False if single_file else _to_bool(rule.get('recursive'), True),
+            'singleFile': single_file,
             'extensions': _normalize_extensions(rule.get('extensions')) if rule.get('extensions') else None,
             'tmdbId': _optional_int(rule, 'tmdbId', 'tmdb_id') or 0,
             'seasonNumber': _optional_int(rule, 'seasonNumber', 'season')
@@ -722,23 +724,52 @@ def _refresh_openlist_paths(openlist_id, paths):
 def _prepare_rerun_request(task_req, fallback_path='', latest_task=None, openlist_id=None):
     task_req = dict(task_req or {})
     old_path = normalize_openlist_path(str(task_req.get('path') or fallback_path or ''))
-    source_path, target_path = _root_rename_path_pair(latest_task, old_path)
-    path = target_path or _root_rename_target(latest_task, old_path) or normalize_openlist_path(str(fallback_path or old_path or ''))
-    if openlist_id and source_path and target_path:
-        _refresh_openlist_paths(openlist_id, [
-            _parent_openlist_path(source_path),
-            _parent_openlist_path(target_path),
-        ])
-        source_exists = _openlist_path_exists(openlist_id, source_path, refresh=True)
-        target_exists = _openlist_path_exists(openlist_id, target_path, refresh=True)
-        if source_exists:
-            path = source_path
-        elif target_exists:
-            path = target_path
+    single_file = _to_bool(task_req.get('singleFile'), False)
+    preview_items = task_req.get('plans') if isinstance(task_req.get('plans'), list) else []
+    preview_item = next((item for item in preview_items if isinstance(item, dict)), {})
+    preview_source = normalize_openlist_path(str(preview_item.get('srcPath') or old_path))
+    preview_target = normalize_openlist_path(str(preview_item.get('targetPath') or ''))
+    source_path = ''
+    target_path = ''
+
+    if single_file:
+        path = preview_source
+        if openlist_id:
+            refresh_paths = [
+                _parent_openlist_path(item)
+                for item in (preview_source, preview_target)
+                if item and item != '/'
+            ]
+            _refresh_openlist_paths(openlist_id, refresh_paths)
+            source_exists = bool(preview_source and preview_source != '/' and _openlist_path_exists(
+                openlist_id, preview_source, refresh=True
+            ))
+            target_exists = bool(preview_target and preview_target != '/' and _openlist_path_exists(
+                openlist_id, preview_target, refresh=True
+            ))
+            if not source_exists and target_exists:
+                path = preview_target
+    else:
+        source_path, target_path = _root_rename_path_pair(latest_task, old_path)
+        path = target_path or _root_rename_target(latest_task, old_path) or normalize_openlist_path(str(fallback_path or old_path or ''))
+        if openlist_id and source_path and target_path:
+            _refresh_openlist_paths(openlist_id, [
+                _parent_openlist_path(source_path),
+                _parent_openlist_path(target_path),
+            ])
+            source_exists = _openlist_path_exists(openlist_id, source_path, refresh=True)
+            target_exists = _openlist_path_exists(openlist_id, target_path, refresh=True)
+            if source_exists:
+                path = source_path
+            elif target_exists:
+                path = target_path
     task_req.pop('action', None)
     task_req.pop('plans', None)
     task_req['path'] = path
     task_req['apply'] = True
+    if single_file:
+        task_req['singleFile'] = True
+        task_req['recursive'] = False
 
     config = task_req.get('config')
     if isinstance(config, dict):
@@ -747,7 +778,7 @@ def _prepare_rerun_request(task_req, fallback_path='', latest_task=None, openlis
         if isinstance(rules, list) and rules:
             updated_rules = []
             matched = False
-            replace_paths = {old_path}
+            replace_paths = {old_path, preview_source, preview_target}
             if source_path:
                 replace_paths.add(source_path)
             if target_path:
@@ -761,6 +792,9 @@ def _prepare_rerun_request(task_req, fallback_path='', latest_task=None, openlis
                 if not rule_path or rule_path in replace_paths:
                     updated_rule['path'] = path
                     matched = True
+                if single_file:
+                    updated_rule['singleFile'] = True
+                    updated_rule['recursive'] = False
                 updated_rules.append(updated_rule)
             if not matched and isinstance(updated_rules[0], dict):
                 updated_rules[0]['path'] = path
@@ -1452,6 +1486,7 @@ def _build_runner_config(config, openlist):
             'path': rule['path'],
             'type': rule['type'],
             'recursive': rule['recursive'],
+            'single_file': rule.get('singleFile', False),
             'extensions': rule['extensions'] or config['mediaExtensions'],
             'tmdbId': rule.get('tmdbId') or 0,
             'seasonNumber': rule.get('seasonNumber')
@@ -1543,12 +1578,13 @@ def previewNaming(req):
     media_type = str(req.get('type') or 'auto').lower()
     if media_type not in {'auto', 'movie', 'tv'}:
         media_type = 'auto'
-    recursive = _to_bool(req.get('recursive'), True)
+    single_file = _to_bool(req.get('singleFile'), False)
+    recursive = False if single_file else _to_bool(req.get('recursive'), True)
     limit = _to_int(req.get('limit'), config['limit'], 0)
     preview_limit = _to_int(req.get('previewLimit'), limit, 0)
     tmdb_id = _optional_int(req, 'tmdbId', 'tmdb_id') or 0
     season_number = _optional_int(req, 'seasonNumber', 'season')
-    if tmdb_id and media_type == 'auto' and season_number is not None:
+    if media_type == 'auto' and season_number is not None:
         media_type = 'tv'
 
     openlist = openlistMapper.getOpenlistById(openlist_id)
@@ -1558,6 +1594,7 @@ def previewNaming(req):
             'path': path,
             'type': media_type,
             'recursive': recursive,
+            'singleFile': single_file,
             'extensions': config['mediaExtensions'],
             'tmdbId': tmdb_id,
             'seasonNumber': season_number
@@ -1571,7 +1608,11 @@ def previewNaming(req):
 
     extensions = {ext.lower() for ext in config['mediaExtensions']}
     scan_limit = preview_limit + 1 if preview_limit else 0
-    files = collect_files(client, path, recursive, config['refresh'], extensions, scan_limit)
+    if single_file:
+        _, extension = posixpath.splitext(path)
+        files = [path] if extension.lower() in extensions else []
+    else:
+        files = collect_files(client, path, recursive, config['refresh'], extensions, scan_limit)
     limited = bool(preview_limit and len(files) > preview_limit)
     if limited:
         files = files[:preview_limit]
@@ -1624,6 +1665,7 @@ def previewNaming(req):
         'path': path,
         'type': media_type,
         'recursive': recursive,
+        'singleFile': single_file,
         'tmdbId': tmdb_id,
         'seasonNumber': season_number,
         'total': len(plans),
@@ -1713,13 +1755,15 @@ def runScraping(req, abort_event=None, progress_callback=None, root_progress_cal
         media_type = str(req.get('type') or 'auto').lower()
         if media_type not in {'auto', 'movie', 'tv'}:
             media_type = 'auto'
+        single_file = _to_bool(req.get('singleFile'), False)
         season_number = _optional_int(req, 'seasonNumber', 'season')
         if media_type == 'auto' and season_number is not None:
             media_type = 'tv'
         config['rules'] = [{
             'path': normalize_openlist_path(path),
             'type': media_type,
-            'recursive': _to_bool(req.get('recursive'), True),
+            'recursive': False if single_file else _to_bool(req.get('recursive'), True),
+            'singleFile': single_file,
             'extensions': config['mediaExtensions'],
             'tmdbId': _optional_int(req, 'tmdbId', 'tmdb_id') or 0,
             'seasonNumber': season_number

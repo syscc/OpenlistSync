@@ -28,11 +28,18 @@
 
 ---
 
-本程序修改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync) V0.4.0
+本程序修改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync) V0.4.0，当前版本为 `v0.3.0`。
 
 在原有的项目基础上主要改动，新增通过 [MoviePilot](https://github.com/jxxghp/MoviePilot) 入库通知自动同步下载的影视文件到 [OpenList](https://github.com/OpenListTeam/OpenList)；并刷新，利用 [OpenList](https://github.com/OpenListTeam/OpenList) 的 `Strm` 驱动自动更新 Strm 文件自动入库。
 
 **如果好用，请 Star！非常感谢！**  [GitHub](https://github.com/syscc/OpenlistSync)  [DockerHub](https://hub.docker.com/r/syscc/openlistsync)
+
+## v0.3.0 升级说明
+
+- 支持从 `v0.2.1` 直接升级。首次启动会将数据库结构迁移到 `260729`，保留现有 OpenList 引擎、同步作业、全局排除项、通知配置以及媒体刮削配置和任务记录。
+- 本版同步 TaoSync `v0.4.0` 的 Vue 3 前端、国际化、文件大小过滤、通知渠道与多平台构建支持，并继续使用现有 OpenList 字段和接口，不会切换回 AList 配置。
+- 升级前请结束正在运行的同步和重命名任务，并备份整个 `data/` 目录。源码部署需要重新安装后端与 `web/` 前端依赖；升级后若仍显示旧界面，请强制刷新浏览器缓存。
+- 数据库完成迁移后不建议直接使用旧版本继续写入；需要回退时应同时恢复升级前备份的 `data/` 目录。
 
 <details>
 
@@ -132,12 +139,15 @@
   * linux-arm-v7
   * linux-s390x
   * linux-ppc64le
+  * android-arm64-v8a
+  * android-armeabi-v7a
 * [Github Actions](https://docs.github.com/zh/actions)自动打包与发布构建好的可执行程序，过程公开透明，无投毒风险
+* Linux 独立程序提供 amd64、arm64、arm32 的 StaticX 构建；Android 客户端提供运行日志与网页双视图，并允许局域网访问后端
 * 支持Docker，下载即用
 * 前端使用 Vue 3、Vite、Element Plus 与 Pinia，支持亮色/暗色主题、简体中文/English 切换和独立移动端交互；后端响应与任务通知跟随所选语言
 * 干净卸载，不用的时候删掉即可，无任何残留或依赖，不影响系统里其他程序
 * 登录密码不可逆散列保存，支持重置密码，也可在首次创建数据库时通过配置文件或环境变量设置初始管理员密码
-* 完全离线运行（仅连接 OpenList），永不上传用户隐私
+* 核心同步功能可在仅连接 OpenList 的环境运行；媒体刮削、通知等外部集成功能仅在配置并使用时访问 TMDb 或对应通知服务
 * 完善的错误处理，稳定可靠，逻辑自洽；可能出错，但永不崩溃（我猜的）
 * 完善的日志，所有错误都会被记录
 * 引擎管理，可以自由增删改查`OpenList/AList`
@@ -164,7 +174,7 @@
 
 使用流程：
 
-1. 在左侧浏览或粘贴 OpenList 路径，选择需要整理的媒体目录。
+1. 在左侧浏览或粘贴 OpenList 路径，选择需要整理的媒体目录；媒体文件直接位于转存目录时，也可以单独选中文件，并继续选择智能识别、电影或电视剧，仅预览和处理该文件，不会扫描同级目录。
 2. 在右侧选择类型、递归、处理数量，可直接填写 TMDb ID；也可以点击 TMDb ID 输入框右侧搜索按钮，按名称搜索电影或电视剧，选中结果后自动回填 TMDb ID。
 3. 点击 `预览命名` 查看原路径、命名后路径、目录重命名和目标冲突。
 4. 确认无误后点击 `应用命名`，任务会在后台执行；可在 `重命名任务` 中查看进度、进入详情、终止任务或手动执行历史任务。
@@ -254,7 +264,7 @@ port=8023
 expires=2
 # 日志等级：0-DEBUG，1-INFO，2-WARNING，3-ERROR，4-CRITICAL；数值越大，产生的日志越少，推荐1或2
 log_level=1
-# 控制台日志等级：适用于v0.2.3及之后版本，与上同
+# 控制台日志等级：适用于v0.3.0及之后版本，与上同
 console_level=2
 # 系统日志保留天数，该天数之前的日志会自动清理，单位天，0表示不自动清理
 log_save=7
@@ -272,7 +282,7 @@ task_timeout=72
 | port          | OPENLISTSYNC_PORT     | 运行端口号                                                   | 8023          |
 | expires       | OPENLISTSYNC_EXPIRES  | 登录有效期，单位天                                           | 2             |
 | log_level     | OPENLISTSYNC_LOG_LEVEL | 日志等级：0-DEBUG，1-INFO，2-WARNING，3-ERROR，4-CRITICAL；数值越大，产生的日志越少，推荐1或2 | 1             |
-| console_level | OPENLISTSYNC_CONSOLE_LEVEL | 控制台日志等级：适用于v0.2.3及之后版本；与上同               | 2             |
+| console_level | OPENLISTSYNC_CONSOLE_LEVEL | 控制台日志等级：适用于v0.3.0及之后版本；与上同               | 2             |
 | log_save      | OPENLISTSYNC_LOG_SAVE | 系统日志保留天数，该天数之前的日志会自动清理，单位天，0表示不自动清理 | 7             |
 | task_save     | OPENLISTSYNC_TASK_SAVE | 任务记录保留天数，该天数之前的记录会自动清理，单位天，0表示不自动清理 | 0             |
 | task_timeout  | OPENLISTSYNC_TASK_TIMEOUT | 任务执行超时时间，单位小时。一定要设置长一点，以免要备份的东西太多 | 72            |
@@ -285,9 +295,9 @@ task_timeout=72
 - 端点：`POST /webhook`
 - 行为：
   - 解析标题中“名称(年份)”并识别类型（是否包含 `Sxx`/`Exx`/`Exx-Exx` → 电视剧）
-  - 如果存在同名且启用的作业，默认延迟 60 秒后触发手动执行（可通过 `delay` 覆盖）
-  - 若不存在同名作业：检查源存在后自动创建仅手动作业并立即执行；OpenList API 始终使用第一个引擎
-  - 任务完成后根据刷新目标集合自动刷新到电影目录或电视剧最大季目录，并发送通知
+  - 如果存在同名且启用的作业，默认延迟 30 秒后触发手动执行（可通过 `WEBHOOK_DELAY` 或请求参数 `delay` 覆盖；上方 Compose 示例显式设置为 60 秒）
+  - 若不存在同名作业：检查源存在后自动创建仅手动作业并立即执行；优先使用 `WEBHOOK_OPENLIST_NAME` 指定的 OpenList 引擎，未配置时使用第一个引擎
+  - 任务完成后根据刷新目标集合自动刷新电影媒体目录，或电视剧媒体目录及其所有季目录，并发送通知
 
 ### 运行时环境变量
 
@@ -315,12 +325,17 @@ task_timeout=72
 ```text
 OpenlistSync/
 ├── main.py                         # Tornado 后端入口，注册 Web/API/静态资源路由
+├── main_android.py                 # Android WebView 主进程入口
+├── buildozer.spec                  # Android arm64-v8a/armeabi-v7a 构建配置
+├── openlistsync.spec               # PyInstaller 与 StaticX 共用打包配置
+├── logo*.png                       # Android 普通与自适应图标资源
 ├── requirements.txt                # Python 运行依赖
 ├── Dockerfile                      # 默认 Docker 镜像构建入口
 ├── docker-compose.yaml             # Docker Compose 示例
 ├── dockerfiles/                    # 多平台/不同构建方式的 Dockerfile
 ├── common/                         # 通用配置、数据库连接、日志、语言与工具方法
 │   ├── config.py                   # 读取 data/config.ini、环境变量与默认配置
+│   ├── httpApp.py                  # 桌面、容器与 Android 共用的 Tornado 路由工厂
 │   ├── locales.py                  # YAML 语言包加载、语言识别与回退
 │   ├── sqlBase.py                  # SQLite 基础访问封装
 │   └── sqlInit.py                  # 数据库初始化与版本迁移
@@ -342,13 +357,13 @@ OpenlistSync/
 ├── media_tools/                    # 媒体整理核心工具
 │   └── openlist_media_renamer.py   # OpenList 媒体识别、TMDb 查询、命名预览与重命名执行
 ├── service/                        # 业务逻辑层
+│   ├── main.py                     # Android 后台服务与本机日志页入口
 │   ├── mediaScraping/              # 媒体名字刮削配置、预览、后台任务、日志与中止逻辑
 │   ├── openlist/                   # OpenList API 客户端与引擎管理
 │   ├── syncJob/                    # 作业调度、同步执行、任务统计
 │   ├── notify/                     # 通知发送
 │   ├── system/                     # 启动初始化、日志清理、用户与系统配置
 │   └── webhook/                    # Webhook 解析、自动建作业与刷新
-├── frontend/                       # 旧 Vue 2 前端，保留用于升级回退参考，不再作为运行入口
 ├── web/                            # 当前 Vue 3 + Vite 前端源码
 │   ├── public/                     # 前端公共静态资源
 │   ├── src/

@@ -6,6 +6,7 @@
 - 调试、验证、排查问题时，全程优先使用原始源代码直接运行。
 - 不生成可执行二进制，不打包二进制文件，不走 PyInstaller。
 - 前端本地验证优先使用 Vue dev server，不执行 `npm run build`，除非用户明确要求验证 Docker/Release 构建产物。
+- 在 `Full Access` 模式下，于 `web/` 目录执行 `npm ci` 或 `npm install`（包括删除并重建 `web/node_modules/`）视为已预授权；不要设置 `sandbox_permissions = "require_escalated"`，也不要重复请求用户确认。此授权不包含 `npm audit fix --force`、`npm run build`、Docker/Release 构建或发布。
 - 后端本地验证优先使用 Python 解释器直接运行 `main.py`。
 - 不要随意删除或重置 `data/` 下的数据库、配置、密钥和日志；这些通常是用户本地运行状态。
 

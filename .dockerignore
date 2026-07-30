@@ -7,10 +7,11 @@
 .github
 
 # Frontend sources and dev deps (we bundle built assets via spec)
-frontend/node_modules
-frontend/src
 web/node_modules
 web/src
+
+# Local Python environment
+.venv
 
 # Local caches and logs
 __pycache__

@@ -1,6 +1,7 @@
 # Python caches
 __pycache__/
 *.pyc
+.venv/
 
 # Local data and runtime artifacts
 data/**
@@ -12,8 +13,16 @@ data/**
 *.pid
 
 # Frontend build/dev noise
-frontend/node_modules/
 web/node_modules/
+web/dist/
+front/
+
+# Packaging output
+.buildozer/
+.python-for-android/
+bin/
+build/
+dist/
 
 # IDE
 .vscode/

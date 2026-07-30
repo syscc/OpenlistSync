@@ -24,8 +24,9 @@
 						@click="browsePath(currentPath, true)">{{ $t('mediaScraping.refresh') }}</el-button>
 				</div>
 				<div class="file-list" v-loading="browseLoading">
-					<div class="file-row" v-for="item in browserItems" :key="item.path" :class="{disabled: !item.isDir}"
-						@click="item.isDir && browsePath(item.path)">
+					<div class="file-row" v-for="item in browserItems" :key="item.path"
+						:class="{disabled: !item.isDir && !isMediaFile(item), selected: !item.isDir && selectedFilePath === item.path}"
+						@click="selectBrowserItem(item)">
 							<el-icon><component :is="item.isDir ? 'Folder' : 'Document'" /></el-icon>
 						<span>{{item.name}}</span>
 					</div>
@@ -37,7 +38,7 @@
 				<div class="preview-top">
 					<div>
 						<div class="panel-title">{{ $t('mediaScraping.namingPreview') }}</div>
-						<div class="current-path">{{currentPath}}</div>
+						<div class="current-path">{{previewPath}}</div>
 					</div>
 				</div>
 				<div class="preview-tools">
@@ -46,7 +47,7 @@
 						<el-option :label="$t('mediaScraping.movie')" value="movie"></el-option>
 						<el-option :label="$t('mediaScraping.tv')" value="tv"></el-option>
 					</el-select>
-					<el-checkbox v-model="recursive" @change="clearPreview">{{ $t('mediaScraping.recursive') }}</el-checkbox>
+					<el-checkbox v-model="recursive" :disabled="singleFileMode" @change="clearPreview">{{ $t('mediaScraping.recursive') }}</el-checkbox>
 					<el-input-number v-model="config.limit" size="small" :min="0" controls-position="right" class="limit-input"
 						@change="clearPreview"></el-input-number>
 					<span class="tip-text">{{ $t('mediaScraping.itemLimit') }}</span>
@@ -60,7 +61,7 @@
 						:disabled="mediaType === 'movie'" @input="clearPreview"></el-input>
 					<span class="tip-text">{{ $t('mediaScraping.season') }}</span>
 					<el-button type="primary" size="small" :loading="previewLoading"
-						:disabled="normalizePath(currentPath) === '/'"
+						:disabled="normalizePath(previewPath) === '/'"
 						@click="previewNaming">
 						{{ $t('mediaScraping.preview') }}
 					</el-button>
@@ -217,6 +218,7 @@
 				config: this.defaultConfig(),
 				extensionsText: '',
 				currentPath: '/',
+				selectedFilePath: '',
 				mediaType: 'auto',
 				recursive: true,
 				tmdbId: '',
@@ -246,6 +248,12 @@
 			};
 		},
 		computed: {
+			previewPath() {
+				return this.selectedFilePath || this.currentPath;
+			},
+			singleFileMode() {
+				return Boolean(this.selectedFilePath);
+			},
 			previewItems() {
 				return this.previewResult && this.previewResult.items ? this.previewResult.items : [];
 			},
@@ -341,6 +349,7 @@
 				if (!this.requireEngine()) {
 					return;
 				}
+				this.selectedFilePath = '';
 				this.currentPath = this.normalizePath(path);
 				this.clearPreview();
 				if (refresh) {
@@ -365,15 +374,37 @@
 				parts.pop();
 				this.browsePath('/' + parts.join('/'));
 			},
+			isMediaFile(item) {
+				if (!item || item.isDir) {
+					return false;
+				}
+				const name = String(item.name || '').toLowerCase();
+				return (this.config.mediaExtensions || []).some(extension => {
+					const normalized = String(extension || '').trim().toLowerCase();
+					return normalized && name.endsWith(normalized.startsWith('.') ? normalized : `.${normalized}`);
+				});
+			},
+			selectBrowserItem(item) {
+				if (item && item.isDir) {
+					this.browsePath(item.path);
+					return;
+				}
+				if (!this.isMediaFile(item)) {
+					return;
+				}
+				this.selectedFilePath = item.path;
+				this.clearPreview();
+			},
 			clearPreview() {
 				this.previewSeq += 1;
 				this.previewLoading = false;
 				this.previewResult = null;
 			},
 			defaultSearchKeyword() {
-				const parts = this.normalizePath(this.currentPath).split('/').filter(item => item);
+				const parts = this.normalizePath(this.previewPath).split('/').filter(item => item);
 				const name = parts.length ? parts[parts.length - 1] : '';
 				return name
+					.replace(/\.[^.]+$/, '')
 					.replace(/\{tmdb-\d+\}/ig, '')
 					.replace(/\[[^\]]+\]/g, ' ')
 					.replace(/\([12]\d{3}\)/g, ' ')
@@ -432,7 +463,7 @@
 				if (!this.requireEngine()) {
 					return;
 				}
-				if (this.normalizePath(this.currentPath) === '/') {
+				if (this.normalizePath(this.previewPath) === '/') {
 					this.previewResult = null;
 					return;
 				}
@@ -440,9 +471,10 @@
 				this.previewLoading = true;
 				previewMediaScraping({
 					openlistId: this.config.defaultOpenlistId,
-					path: this.currentPath,
+					path: this.previewPath,
 					type: this.mediaType,
-					recursive: this.recursive,
+					recursive: this.singleFileMode ? false : this.recursive,
+					singleFile: this.singleFileMode,
 					limit: this.config.limit,
 					previewLimit: this.config.limit,
 					tmdbId: this.tmdbId,
@@ -476,17 +508,19 @@
 						this.runLoading = true;
 						const config = this.buildConfig();
 					config.rules = [{
-						path: this.currentPath,
+						path: this.previewPath,
 						type: this.mediaType,
-						recursive: this.recursive,
+						recursive: this.singleFileMode ? false : this.recursive,
+						singleFile: this.singleFileMode,
 						tmdbId: this.tmdbId,
 						seasonNumber: this.seasonNumber
 					}];
 					runMediaScraping({
 						apply: true,
-						path: this.currentPath,
+						path: this.previewPath,
 						type: this.mediaType,
-						recursive: this.recursive,
+						recursive: this.singleFileMode ? false : this.recursive,
+						singleFile: this.singleFileMode,
 						limit: this.config.limit,
 						tmdbId: this.tmdbId,
 						seasonNumber: this.seasonNumber,
@@ -781,6 +815,11 @@
 		.file-row.disabled {
 			cursor: default;
 			color: var(--text-muted);
+		}
+
+		.file-row.selected {
+			background-color: rgba(64, 158, 255, .16);
+			box-shadow: inset 3px 0 0 var(--el-color-primary);
 		}
 
 		.file-row span {

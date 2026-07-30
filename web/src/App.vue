@@ -4,7 +4,7 @@ import { ElConfigProvider } from 'element-plus';
 import { LANGS } from '@/utils/langs';
 import { useI18n } from 'vue-i18n';
 const { locale } = useI18n();
-const localeEl = computed(() => (LANGS[locale.value].elem));
+const localeEl = computed(() => (LANGS[locale.value] || LANGS["zh-CN"]).elem);
 </script>
 
 <template>

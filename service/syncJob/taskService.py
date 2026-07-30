@@ -68,6 +68,9 @@ def updateJobTaskStatus(taskId, status, errMsg=None, taskList=None, createTime=N
         for notify in notifyList:
             try:
                 notifyService.sendNotify(notify, title, content, needNotSync)
+                logging.getLogger().info(
+                    "Task completion notification sent: taskId=%s, notifyId=%s",
+                    taskId, notify.get('id'))
             except Exception as e:
                 logger = logging.getLogger()
                 logger.error(G('notify_error').format(str(e)))

@@ -104,6 +104,15 @@ class OpenListClient:
         else:
             return []
 
+    def pathExists(self, path, isDir=None):
+        info = self.post('/api/fs/get', data={
+            'path': path,
+            'refresh': True
+        })
+        if isDir is None:
+            return True
+        return bool(info.get('is_dir')) == bool(isDir)
+
     def mkdir(self, path, scanInterval=0):
         self.checkWait(path, scanInterval)
         return self.post('/api/fs/mkdir', data={

@@ -308,6 +308,9 @@ def refresh_after_task(job, status):
     for notify in notify_list:
         try:
             notifyService.sendNotify(notify, title, content, False)
+            logger.info(
+                "Refresh notification sent: job=%s, notifyId=%s",
+                job.get('id'), notify.get('id'))
         except Exception as e:
             logger.error(f"Refresh notify failed: {str(e)}")
             pass

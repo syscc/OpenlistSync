@@ -10,9 +10,11 @@ from pathlib import Path
 from unittest import mock
 
 from common import LNG, config, locales, sqlInit
+from common.httpApp import make_app, redact_request_uri, resolve_front_dir
 from data import start as sourceStart
 from service.mediaScraping import mediaScrapingService
 from service.notify import notifyService
+from service.openlist.openlistClient import OpenListClient
 from service.syncJob import jobClient, jobService, taskService
 from service.system import onStart
 from service.webhook import refreshService, webhookService
@@ -309,6 +311,32 @@ class JobFilteringTests(unittest.TestCase):
 
 
 class ApiCompatibilityTests(unittest.TestCase):
+    def test_access_log_redacts_sensitive_query_values(self):
+        uri = redact_request_uri('/webhook?apikey=private-key&title=Ready%20Now&token=secret')
+        self.assertNotIn('private-key', uri)
+        self.assertNotIn('secret', uri)
+        self.assertIn('title=Ready+Now', uri)
+        self.assertEqual(2, uri.count('%3Credacted%3E'))
+
+    def test_shared_http_app_keeps_openlist_custom_routes(self):
+        app = make_app({'passwdStr': 'test-secret'}, '/tmp/missing-front')
+        patterns = [rule.matcher.regex.pattern for rule in app.default_router.rules[0].target.rules]
+        self.assertIn('/svr/openlist$', patterns)
+        self.assertIn('/svr/media/scraping$', patterns)
+        self.assertIn('/svr/system/config$', patterns)
+        self.assertIn('/webhook$', patterns)
+        self.assertNotIn('/svr/alist$', patterns)
+
+    def test_frontend_resolution_prefers_built_web_when_front_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            (base / 'web' / 'dist').mkdir(parents=True)
+            (base / 'web' / 'dist' / 'index.html').write_text('web', encoding='utf-8')
+            self.assertEqual(str(base / 'web' / 'dist'), resolve_front_dir(str(base)))
+            (base / 'front').mkdir()
+            (base / 'front' / 'index.html').write_text('front', encoding='utf-8')
+            self.assertEqual(str(base / 'front'), resolve_front_dir(str(base)))
+
     def test_paged_job_responses_include_legacy_and_vue3_list_names(self):
         jobs = [{'id': 1}]
         with mock.patch.object(jobService.jobMapper, 'getJobList', return_value={
@@ -333,6 +361,166 @@ class ApiCompatibilityTests(unittest.TestCase):
             result = taskService.getTaskItemList({'taskId': 2})
         self.assertEqual(task_items, result['taskItemList'])
         self.assertIs(result['taskItemList'], result['dataList'])
+
+    def test_openlist_exact_path_check_forces_refresh(self):
+        client = OpenListClient.__new__(OpenListClient)
+        client.post = mock.Mock(return_value={'is_dir': True})
+
+        self.assertTrue(client.pathExists('/media/tv/Show (2026)', True))
+        client.post.assert_called_once_with('/api/fs/get', data={
+            'path': '/media/tv/Show (2026)',
+            'refresh': True,
+        })
+
+
+class MediaSingleFileTests(unittest.TestCase):
+    def setUp(self):
+        LNG.set_context_lang('en')
+
+    def test_single_file_rule_preserves_type_and_disables_recursive(self):
+        config = mediaScrapingService._normalize_config({
+            'rules': [{
+                'path': '/115/incoming/Movie.2025.mkv',
+                'type': 'tv',
+                'recursive': True,
+                'singleFile': True,
+            }],
+        })
+        rule = config['rules'][0]
+        self.assertEqual('tv', rule['type'])
+        self.assertFalse(rule['recursive'])
+        self.assertTrue(rule['singleFile'])
+
+    def test_single_file_preview_preserves_media_type_without_scanning_siblings(self):
+        config_data = mediaScrapingService._default_config()
+        config_data.update({
+            'defaultOpenlistId': 1,
+            'openlistIds': [1],
+        })
+        openlist = {
+            'id': 1,
+            'remark': 'test',
+            'url': 'http://openlist.test',
+            'token': 'token',
+        }
+        cases = [
+            (
+                '/115/临时转存/Sinners.2025.2160p.WEB-DL.H265.mkv',
+                'movie',
+                ('Sinners', '2025'),
+                '/115/临时转存/Sinners (2025)/',
+                'movie',
+            ),
+            (
+                '/115/最近接收/罪人 (2025)/罪人.2025.2160p.WEB-DL.H265.mkv',
+                'movie',
+                ('罪人', '2025'),
+                '/115/最近接收/罪人 (2025)/',
+                'movie',
+            ),
+            (
+                '/115/临时转存/Slow.Horses.2022.S03E01.2160p.WEB-DL.H265.mkv',
+                'auto',
+                ('Slow Horses', '2022'),
+                '/115/临时转存/Slow Horses (2022)/Season 3/',
+                'tv',
+            ),
+        ]
+        for source_path, requested_type, resolved, target_prefix, detected_type in cases:
+            client = mock.Mock()
+            tmdb_client = mock.Mock()
+            tmdb_client.enabled.return_value = True
+            tmdb_client.resolve.return_value = resolved
+            with self.subTest(requested_type=requested_type), \
+                    mock.patch.object(mediaScrapingService.openlistMapper, 'getOpenlistById', return_value=openlist), \
+                    mock.patch.object(mediaScrapingService, 'build_client', return_value=client), \
+                    mock.patch.object(mediaScrapingService, 'build_tmdb_client', return_value=tmdb_client), \
+                    mock.patch.object(mediaScrapingService, 'collect_files') as collect_mock:
+                result = mediaScrapingService.previewNaming({
+                    'openlistId': 1,
+                    'path': source_path,
+                    'type': requested_type,
+                    'recursive': True,
+                    'singleFile': True,
+                    'config': config_data,
+                })
+
+            client.login.assert_called_once_with()
+            collect_mock.assert_not_called()
+            self.assertEqual(requested_type, result['type'])
+            self.assertFalse(result['recursive'])
+            self.assertTrue(result['singleFile'])
+            self.assertEqual(1, result['total'])
+            self.assertEqual(source_path, result['items'][0]['srcPath'])
+            self.assertTrue(result['items'][0]['targetPath'].startswith(target_prefix))
+            if '/罪人 (2025)/' in source_path:
+                self.assertEqual(1, result['items'][0]['targetPath'].count('/罪人 (2025)'))
+            self.assertEqual([], result['rootRenames'])
+            self.assertEqual(detected_type, tmdb_client.resolve.call_args.args[0])
+
+    def test_single_movie_rerun_uses_source_or_target_file(self):
+        source_path = '/115/incoming/Movie.2025.mkv'
+        target_path = '/115/incoming/Movie (2025)/Movie.2025.mkv'
+        request = {
+            'path': source_path,
+            'type': 'movie',
+            'recursive': False,
+            'singleFile': True,
+            'plans': [{
+                'srcPath': source_path,
+                'targetPath': target_path,
+            }],
+            'config': {
+                'rules': [{
+                    'path': source_path,
+                    'type': 'movie',
+                    'recursive': False,
+                    'singleFile': True,
+                }],
+            },
+        }
+
+        with mock.patch.object(mediaScrapingService, '_refresh_openlist_paths'), \
+                mock.patch.object(mediaScrapingService, '_openlist_path_exists', side_effect=[True, False]):
+            source_request = mediaScrapingService._prepare_rerun_request(request, openlist_id=1)
+        self.assertEqual(source_path, source_request['path'])
+        self.assertTrue(source_request['singleFile'])
+        self.assertTrue(source_request['config']['rules'][0]['singleFile'])
+
+        with mock.patch.object(mediaScrapingService, '_refresh_openlist_paths'), \
+                mock.patch.object(mediaScrapingService, '_openlist_path_exists', side_effect=[False, True]):
+            target_request = mediaScrapingService._prepare_rerun_request(request, openlist_id=1)
+        self.assertEqual(target_path, target_request['path'])
+        self.assertTrue(target_request['singleFile'])
+        self.assertFalse(target_request['recursive'])
+        self.assertTrue(target_request['config']['rules'][0]['singleFile'])
+        self.assertFalse(target_request['config']['rules'][0]['recursive'])
+
+    def test_single_file_rerun_without_target_does_not_refresh_root(self):
+        source_path = '/115/incoming/Episode.S01E01.mkv'
+        request = {
+            'path': source_path,
+            'type': 'tv',
+            'recursive': False,
+            'singleFile': True,
+            'plans': [{'srcPath': source_path}],
+            'config': {
+                'rules': [{
+                    'path': source_path,
+                    'type': 'tv',
+                    'recursive': False,
+                    'singleFile': True,
+                }],
+            },
+        }
+
+        with mock.patch.object(mediaScrapingService, '_refresh_openlist_paths') as refresh_mock, \
+                mock.patch.object(mediaScrapingService, '_openlist_path_exists', return_value=True):
+            rerun_request = mediaScrapingService._prepare_rerun_request(request, openlist_id=1)
+
+        self.assertEqual(source_path, rerun_request['path'])
+        self.assertEqual((1, ['/115/incoming']), refresh_mock.call_args.args)
+        self.assertNotIn('/', refresh_mock.call_args.args[1])
 
 
 class FakeResponse:
@@ -493,6 +681,59 @@ class NotificationTests(unittest.TestCase):
             webhookService.handleWebhook({'title': 'Modern Family (2009) 已入库'})
         self.assertEqual('Webhook received, but no engine is configured', send_mock.call_args.args[1])
         self.assertIn('Add an OpenList URL', send_mock.call_args.args[2])
+
+    def test_webhook_checks_exact_source_and_dst_paths(self):
+        class ImmediateTimer:
+            def __init__(self, delay, callback):
+                self.callback = callback
+
+            def start(self):
+                self.callback()
+
+        remark = 'Modern Family (2009)'
+        source_path = f'/media/tv/comedy/{remark}'
+        dst_path = f'/archive/tv/comedy/{remark}'
+        client = mock.Mock()
+        client.pathExists.side_effect = lambda path, is_dir: is_dir and path in {
+            source_path,
+            dst_path,
+        }
+        created_job = {'id': 67, 'remark': remark, 'openlistId': 1}
+        env = {
+            'WEBHOOK_DELAY': '0',
+            'WEBHOOK_OPENLIST_NAME': 'OpenList',
+            'TVsource': '/media/tv',
+            'MOVsource': '/media/movie',
+            'SECOND': 'true',
+            'DST_TV_TARGETS': '/archive/tv',
+            'SYNC_TV_TARGETS': '/fallback/tv',
+        }
+
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(webhookService.threading, 'Timer', ImmediateTimer), \
+                mock.patch('mapper.jobMapper.getJobList', side_effect=[[], [created_job]]), \
+                mock.patch('mapper.openlistMapper.getOpenlistList', return_value=[{
+                    'id': 1,
+                    'remark': 'OpenList',
+                }]), \
+                mock.patch('service.openlist.openlistService.getClientById', return_value=client), \
+                mock.patch('service.syncJob.jobService.addJobClient') as add_mock, \
+                mock.patch('service.syncJob.jobService.doJobManual') as run_mock:
+            result = webhookService.handleWebhook({
+                'title': f'{remark} S01 E01 已入库',
+                'text': '类型：电视剧，类别：comedy',
+            })
+
+        self.assertEqual({'remark': remark, 'scheduled_after_sec': 0}, result['job'])
+        self.assertEqual([
+            mock.call(source_path, True),
+            mock.call(dst_path, True),
+        ], client.pathExists.call_args_list)
+        client.filePathList.assert_not_called()
+        payload = add_mock.call_args.args[0]
+        self.assertEqual(source_path + '/', payload['srcPath'])
+        self.assertEqual(dst_path + '/', payload['dstPath'])
+        run_mock.assert_called_once_with(67)
 
     def test_refresh_deduplicates_before_openlist_calls(self):
         refreshService._recent_refresh.clear()

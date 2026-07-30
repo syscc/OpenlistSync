@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { CaretRight, CircleCheck, CircleClose, Delete, Edit, Plus, View } from "@element-plus/icons-vue";
@@ -356,7 +356,6 @@ const handleCurrentChange = (value) => {
 const toCron = () => window.open("https://dr34m.cn/2024/08/newpost-58/", "_blank");
 const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_blank");
 
-onMounted(getJobList);
 </script>
 
 <template>
@@ -366,7 +365,13 @@ onMounted(getJobList);
         <h1>{{ $t("home.jobManagement") }}</h1>
         <div class="job-count">{{ $t("home.mobileJobCount", { count: jobData.count }) }}</div>
       </div>
-      <menuRefresh :auto-refresh="false" :need-show="1" :loading="loading" @get-data="getJobList" />
+      <menuRefresh
+        :auto-refresh="true"
+        :fresh-interval="5273"
+        :need-show="1"
+        :loading="loading"
+        @get-data="getJobList"
+      />
     </div>
 
     <div class="primary-actions">

@@ -639,6 +639,7 @@ class JobClient:
             time.sleep(10)
         self.jobDoing = True
         taskId = None
+        logger = logging.getLogger()
         try:
             taskId = jobMapper.addJobTask({
                 'jobId': self.jobId,
@@ -661,14 +662,20 @@ class JobClient:
                     for notify in notify_list:
                         try:
                             notifyService.sendNotify(notify, title, content, False)
-                        except Exception:
-                            pass
-            except Exception:
-                pass
+                            logger.info(
+                                "Sync submit notification sent: jobId=%s, taskId=%s, notifyId=%s",
+                                self.jobId, taskId, notify.get('id'))
+                        except Exception as e:
+                            logger.error(
+                                "Sync submit notification failed: jobId=%s, taskId=%s, notifyId=%s, error=%s",
+                                self.jobId, taskId, notify.get('id'), str(e))
+            except Exception as e:
+                logger.error(
+                    "Sync submit notification setup failed: jobId=%s, taskId=%s, error=%s",
+                    self.jobId, taskId, str(e))
             self.currentJobTask = JobTask(taskId, self)
         except Exception as e:
             self.jobDoing = False
-            logger = logging.getLogger()
             errMsg = G('do_job_err').format(str(e))
             logger.error(errMsg)
             if taskId is not None:

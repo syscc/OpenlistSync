@@ -8,6 +8,9 @@ import { useI18n } from "vue-i18n";
 
 const appStore = useAppStore();
 const { t } = useI18n();
+const versionText = computed(() =>
+  t("setting.version").replace("__version_placeholder__", import.meta.env.VITE_APP_VERSION),
+);
 const resetFormRef = ref();
 const resetForm = ref({
   oldPasswd: "",
@@ -96,7 +99,7 @@ const resetPasswd = () => {
       <el-button type="primary" :loading="loading" @click="resetPasswd">{{ $t("header.setPwd") }}</el-button>
     </div>
     <div class="setting-bottom">
-      <div class="setting-bottom-item">{{ $t("setting.version") }}</div>
+      <div class="setting-bottom-item">{{ versionText }}</div>
       <div class="setting-bottom-item">
         <a href="https://github.com/syscc/OpenlistSync" target="_blank">{{ $t("setting.github") }}</a>
       </div>

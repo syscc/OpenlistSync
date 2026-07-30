@@ -1,48 +1,17 @@
 import asyncio
 import logging
-import os
-import sys
 
-from tornado.web import Application, RequestHandler, StaticFileHandler
-
+from common.httpApp import make_app, resolve_front_dir
 from common.config import getConfig
 from common.LNG import G
-from controller import systemController, jobController, notifyController, webhookController, mediaScrapingController
 from service.system import onStart
 
 
-class MainIndex(RequestHandler):
-    def get(self):
-        indexPath = os.path.join(frontDir, "index.html")
-        if os.path.exists(indexPath):
-            self.render(indexPath)
-        else:
-            self.write("Frontend not built. Run the Vue dev server from 'web/' for source-mode development.")
-
-
-def make_app():
-    # 以/svr/noAuth开头的请求无需鉴权，例如登录等
-    return Application([
-        (r"/svr/noAuth/login", systemController.Login),
-        (r"/svr/user", systemController.User),
-        (r"/svr/language", systemController.Language),
-        (r"/svr/system/config", systemController.Config),
-        (r"/svr/media/scraping", mediaScrapingController.MediaScraping),
-        (r"/svr/openlist", jobController.OpenList),
-        (r"/svr/job", jobController.Job),
-        (r"/svr/notify", notifyController.Notify),
-        (r"/webhook", webhookController.Webhook),
-        (r"/", MainIndex),
-        (r"/(.*)", StaticFileHandler,
-         {"path": frontDir})
-    ], cookie_secret=server['passwdStr'])
-
-
-async def main():
-    app = make_app()
+async def main(server_cfg, front_dir):
+    app = make_app(server_cfg, front_dir)
     logger = logging.getLogger()
-    app.listen(server['port'], address='0.0.0.0')
-    successMsg = G('running_success').format(url=f"http://0.0.0.0:{server['port']}/")
+    app.listen(server_cfg['port'], address='0.0.0.0')
+    successMsg = G('running_success').format(url=f"http://0.0.0.0:{server_cfg['port']}/")
     logger.critical(successMsg)
     await asyncio.Event().wait()
 
@@ -50,16 +19,4 @@ async def main():
 if __name__ == "__main__":
     onStart.init()
     cfg = getConfig()
-    if getattr(sys, 'frozen', False):
-        frontendBase = sys._MEIPASS
-        frontDir = os.path.join(frontendBase, 'front')
-    else:
-        if os.path.exists(os.path.join('front', 'index.html')):
-            frontDir = os.path.join('front')
-        elif os.path.exists(os.path.join('web', 'dist', 'index.html')):
-            frontDir = os.path.join('web', 'dist')
-        else:
-            frontDir = os.path.join('front')
-    # 后端配置
-    server = cfg['server']
-    asyncio.run(main())
+    asyncio.run(main(cfg['server'], resolve_front_dir()))

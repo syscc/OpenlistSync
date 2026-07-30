@@ -105,6 +105,7 @@ def handleWebhook(req):
                 delay = 30
         def _trigger():
             nonlocal remark
+            trigger_started = time.monotonic()
             try:
                 if req.get('__lang'):
                     set_context_lang(req['__lang'])
@@ -184,6 +185,11 @@ def handleWebhook(req):
                         if not s:
                             return False
                         return bool(re.search(r"\bS\d{1,2}\b", s, re.I) or re.search(r"\bE\d{1,3}\b", s, re.I) or re.search(r"E\d{1,3}-E?\d{1,3}", s, re.I))
+                    def _directory_exists(path):
+                        try:
+                            return client.pathExists(path, True)
+                        except Exception:
+                            return False
                     tv_flag = _is_tv(title) or _is_tv(text)
                     tv_src = os.getenv('TVsource') or ''
                     mov_src = os.getenv('MOVsource') or ''
@@ -196,32 +202,26 @@ def handleWebhook(req):
                     # 尝试查找源目录，支持半角冒号转全角冒号
                     final_remark = remark
                     if client is not None:
-                        try:
-                            # 当启用二级目录且存在二级名称时，优先在二级目录下查找
-                            root_for_list = media_root
-                            if second_level_enable and second_level:
-                                try:
-                                    root_for_list = re.sub(r"/{2,}", "/", f"{media_root.rstrip('/')}/{second_level}")
-                                except Exception:
-                                    root_for_list = media_root
-                            dirs = client.filePathList(root_for_list)
-                            names = [d['path'] for d in dirs]
-                            if remark in names:
+                        source_check_started = time.monotonic()
+                        # 精确检查媒体目录，避免强制刷新并扫描大型父目录。
+                        root_for_list = media_root
+                        if second_level_enable and second_level:
+                            root_for_list = re.sub(r"/{2,}", "/", f"{media_root.rstrip('/')}/{second_level}")
+                        if _directory_exists(f"{root_for_list.rstrip('/')}/{remark}"):
+                            has_src = True
+                        elif ':' in remark:
+                            remark_cn = remark.replace(':', '：')
+                            if _directory_exists(f"{root_for_list.rstrip('/')}/{remark_cn}"):
                                 has_src = True
-                            elif ':' in remark:
-                                # 尝试将半角冒号替换为全角冒号
-                                remark_cn = remark.replace(':', '：')
-                                if remark_cn in names:
-                                    has_src = True
-                                    final_remark = remark_cn
-                            elif '：' in remark:
-                                # 尝试将全角冒号替换为半角冒号
-                                remark_en = remark.replace('：', ':')
-                                if remark_en in names:
-                                    has_src = True
-                                    final_remark = remark_en
-                        except Exception:
-                            has_src = False
+                                final_remark = remark_cn
+                        elif '：' in remark:
+                            remark_en = remark.replace('：', ':')
+                            if _directory_exists(f"{root_for_list.rstrip('/')}/{remark_en}"):
+                                has_src = True
+                                final_remark = remark_en
+                        lg.info(
+                            "Webhook stage source_check: remark=%s, exists=%s, elapsed=%.3fs",
+                            remark, has_src, time.monotonic() - source_check_started)
                     
                     # 更新 remark 为实际存在的目录名（如果有替换）
                     remark = final_remark
@@ -307,6 +307,7 @@ def handleWebhook(req):
                     dst_env = os.getenv('DST_TV_TARGETS') if tv_flag else os.getenv('DST_MOV_TARGETS')
                     dsts = []
                     if dst_env and client is not None:
+                        target_check_started = time.monotonic()
                         try:
                             raw_dst = [p.strip() for p in re.split(r"[,;:]", dst_env) if p and p.strip() != '']
                             for base in raw_dst:
@@ -319,9 +320,7 @@ def handleWebhook(req):
                                 base_for_list = base
                                 if second_level_enable and second_level:
                                     base_for_list = f"{base}/{second_level}"
-                                exists_dirs = client.filePathList(base_for_list)
-                                names = [d['path'] for d in exists_dirs]
-                                if remark in names:
+                                if _directory_exists(f"{base_for_list.rstrip('/')}/{remark}"):
                                     if second_level_enable and second_level:
                                         dsts = [f"{base}/{second_level}/{remark}/"]
                                     else:
@@ -329,6 +328,9 @@ def handleWebhook(req):
                                     break
                         except Exception:
                             pass
+                        lg.info(
+                            "Webhook stage target_check: remark=%s, matched=%s, elapsed=%.3fs",
+                            remark, bool(dsts), time.monotonic() - target_check_started)
                     if not dsts:
                         sync_env = os.getenv('SYNC_TV_TARGETS') if tv_flag else os.getenv('SYNC_MOV_TARGETS')
                         if sync_env:
@@ -389,19 +391,24 @@ def handleWebhook(req):
                         lg.info(f"Webhook create payload: dstPath={payload['dstPath']}")
                     except Exception:
                         pass
+                    create_started = time.monotonic()
                     jobService.addJobClient(payload)
                     jobs2 = jobMapper.getJobList()
                     created = next((j for j in jobs2 if j.get('remark') == remark and int(j.get('openlistId', 0)) == openlistId), None)
                     if created:
                         jobService.doJobManual(int(created['id']))
                         try:
-                            lg.info(f"Webhook created and manual run job id={int(created['id'])}")
+                            lg.info(
+                                "Webhook created and manual run job id=%s, create_elapsed=%.3fs, total_elapsed=%.3fs",
+                                int(created['id']), time.monotonic() - create_started,
+                                time.monotonic() - trigger_started)
                         except Exception:
                             pass
             except Exception:
                 try:
                     import logging
-                    logging.getLogger().exception("Webhook trigger error")
+                    logging.getLogger().exception(
+                        "Webhook trigger error after %.3fs", time.monotonic() - trigger_started)
                 except Exception:
                     pass
         try:

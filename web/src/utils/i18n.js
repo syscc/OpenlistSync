@@ -13,10 +13,15 @@ if (Object.hasOwn(messages, sysLang)) {
   autoLang = sysLangBase;
 }
 let locale = localStorage.getItem("lang");
-if (!locale) {
-  locale = autoLang;
-  localStorage.setItem("lang", locale);
+if (locale?.toLowerCase().startsWith("zh")) {
+  locale = "zh-CN";
+} else if (locale?.toLowerCase().startsWith("en")) {
+  locale = "en";
 }
+if (!Object.hasOwn(messages, locale)) {
+  locale = autoLang;
+}
+localStorage.setItem("lang", locale);
 const i18n = createI18n({
   legacy: false,
   globalInjection: true,
