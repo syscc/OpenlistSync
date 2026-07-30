@@ -1,15 +1,117 @@
 from common import commonUtils
 from common import sqlBase
+from common.config import DEFAULT_PASSWORD, getConfig
+
+
+def _add_column_if_missing(cursor, table, column, definition):
+    columns = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in columns:
+        cursor.execute(f"alter table {table} add column {column} {definition}")
+
+
+def _table_exists(cursor, table):
+    cursor.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,))
+    return cursor.fetchone() is not None
+
+
+def _rename_legacy_column(cursor, table, current, legacy, definition):
+    columns = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+    if current not in columns and legacy in columns:
+        cursor.execute(f"alter table {table} rename column {legacy} to {current}")
+    elif current not in columns:
+        cursor.execute(f"alter table {table} add column {current} {definition}")
+    elif legacy in columns:
+        cursor.execute(f"update {table} set {current}={legacy} where {current} is null")
+
+
+def _ensure_media_tables(cursor):
+    cursor.execute("create table if not exists media_scraping_job("
+                   "id integer primary key autoincrement, groupKey text unique, taskName text, path text, "
+                   "openlistId integer, openlistName text, request text, latestTaskId integer, "
+                   "status integer DEFAULT 1, total integer DEFAULT 0, changed integer DEFAULT 0, "
+                   "successNum integer DEFAULT 0, failNum integer DEFAULT 0, skipNum integer DEFAULT 0, "
+                   "elapsed real, updateTime integer, createTime integer DEFAULT (strftime('%s', 'now')))"
+                   )
+    cursor.execute("create table if not exists media_scraping_task("
+                   "id integer primary key autoincrement, jobId integer, taskName text, path text, "
+                   "openlistId integer, openlistName text, status integer DEFAULT 1, apply integer DEFAULT 1, "
+                   "usedPreviewPlans integer DEFAULT 0, total integer DEFAULT 0, changed integer DEFAULT 0, "
+                   "successNum integer DEFAULT 0, failNum integer DEFAULT 0, skipNum integer DEFAULT 0, "
+                   "elapsed real, rootRenames text, stdout text, stderr text, errMsg text, request text, "
+                   "updateTime integer, createTime integer DEFAULT (strftime('%s', 'now')))"
+                   )
+    cursor.execute("create table if not exists media_scraping_task_item("
+                   "id integer primary key autoincrement, taskId integer, srcPath text, targetPath text, "
+                   "status integer DEFAULT 0, title text, year text, season text, episode text, errMsg text, "
+                   "createTime integer DEFAULT (strftime('%s', 'now')))"
+                   )
+
+    expected_columns = {
+        'media_scraping_job': {
+            'groupKey': 'text', 'taskName': 'text', 'path': 'text', 'openlistId': 'integer',
+            'openlistName': 'text', 'request': 'text', 'latestTaskId': 'integer',
+            'status': 'integer DEFAULT 1', 'total': 'integer DEFAULT 0', 'changed': 'integer DEFAULT 0',
+            'successNum': 'integer DEFAULT 0', 'failNum': 'integer DEFAULT 0', 'skipNum': 'integer DEFAULT 0',
+            'elapsed': 'real', 'updateTime': 'integer', 'createTime': 'integer',
+        },
+        'media_scraping_task': {
+            'jobId': 'integer', 'taskName': 'text', 'path': 'text', 'openlistId': 'integer',
+            'openlistName': 'text', 'status': 'integer DEFAULT 1', 'apply': 'integer DEFAULT 1',
+            'usedPreviewPlans': 'integer DEFAULT 0', 'total': 'integer DEFAULT 0',
+            'changed': 'integer DEFAULT 0', 'successNum': 'integer DEFAULT 0',
+            'failNum': 'integer DEFAULT 0', 'skipNum': 'integer DEFAULT 0', 'elapsed': 'real',
+            'rootRenames': 'text', 'stdout': 'text', 'stderr': 'text', 'errMsg': 'text',
+            'request': 'text', 'updateTime': 'integer', 'createTime': 'integer',
+        },
+        'media_scraping_task_item': {
+            'taskId': 'integer', 'srcPath': 'text', 'targetPath': 'text', 'status': 'integer DEFAULT 0',
+            'title': 'text', 'year': 'text', 'season': 'text', 'episode': 'text', 'errMsg': 'text',
+            'createTime': 'integer',
+        },
+    }
+    for table, columns in expected_columns.items():
+        for column, definition in columns.items():
+            _add_column_if_missing(cursor, table, column, definition)
+
+
+def _reconcile_current_schema(cursor):
+    if not _table_exists(cursor, 'list'):
+        for legacy_table in ('openlist_list', 'alist_list'):
+            if _table_exists(cursor, legacy_table):
+                cursor.execute(f"alter table {legacy_table} rename to list")
+                break
+        else:
+            cursor.execute("create table list("
+                           "id integer primary key autoincrement, remark text, url text, userName text, "
+                           "token text, createTime integer DEFAULT (strftime('%s', 'now')), "
+                           "unique (url, userName))")
+
+    if _table_exists(cursor, 'job'):
+        _rename_legacy_column(cursor, 'job', 'openlistId', 'alistId', 'integer')
+        _add_column_if_missing(cursor, 'job', 'minFileSize', 'integer DEFAULT NULL')
+        _add_column_if_missing(cursor, 'job', 'maxFileSize', 'integer DEFAULT NULL')
+    if _table_exists(cursor, 'job_task_item'):
+        _rename_legacy_column(cursor, 'job_task_item', 'openlistTaskId', 'alistTaskId', 'text')
+
+    cursor.execute("create table if not exists system_config("
+                   "key text primary key, value text, "
+                   "updateTime integer DEFAULT (strftime('%s', 'now')))"
+                   )
+    _add_column_if_missing(cursor, 'system_config', 'updateTime', 'integer')
+    _ensure_media_tables(cursor)
 
 
 @sqlBase.connect_sql
 def init_sql(conn):
-    cuVersion = 260631
+    cuVersion = 260729
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE name='user_list'")
     passwd = None
     if cursor.fetchone() is None:
-        passwd = commonUtils.generatePasswd()
+        configured_password = getConfig()['server']['password']
+        passwd = (commonUtils.generatePasswd()
+                  if configured_password == DEFAULT_PASSWORD
+                  else configured_password)
         cursor.execute("create table user_list("
                        "id integer primary key autoincrement,"
                        "userName text,"                             # 用户名
@@ -52,8 +154,10 @@ def init_sql(conn):
                        "start_date text DEFAULT NULL,"      # 开始时间
                        "end_date text DEFAULT NULL,"        # 结束时间
                        "exclude text DEFAULT NULL,"         # 排除无需同步项，类似gitignore语法，英文冒号分隔多个规则
-                       "createTime integer DEFAULT (strftime('%s', 'now')),"
-                       " unique (srcPath, dstPath, openlistId))")
+                       "minFileSize integer DEFAULT NULL,"  # 过滤小于该字节数的文件，NULL-不限制
+                       "maxFileSize integer DEFAULT NULL,"  # 过滤大于该字节数的文件，NULL-不限制
+                       "createTime integer DEFAULT (strftime('%s', 'now'))"
+                       ", unique (srcPath, dstPath, openlistId))")
         cursor.execute("create table job_task("
                        "id integer primary key autoincrement,"
                        "jobId integer,"             # 所属工作id，job.id
@@ -159,6 +263,8 @@ def init_sql(conn):
                 import logging
                 logger = logging.getLogger()
                 logger.exception(e)
+        if sqlVersion <= cuVersion:
+            _reconcile_current_schema(cursor)
         if sqlVersion < cuVersion:
             if sqlVersion < 240731:
                 cursor.execute(f"alter table user_list add column sqlVersion integer default {cuVersion}")
@@ -301,6 +407,7 @@ def init_sql(conn):
                 except Exception:
                     pass
             cursor.execute(f"update user_list set sqlVersion={cuVersion}")
+        if sqlVersion <= cuVersion:
             conn.commit()
     cursor.close()
     return passwd

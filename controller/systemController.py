@@ -47,6 +47,7 @@ class Language(BaseHandler):
     @handle_request
     def post(self, req):
         language(req['language'])
+        return language()
 
 
 class Config(BaseHandler):

@@ -21,6 +21,14 @@ from service.notify import notifyService
 from service.system import configService
 
 
+def isFileSizeAllowed(fileSize, minFileSize=None, maxFileSize=None):
+    if minFileSize is not None and fileSize < minFileSize:
+        return False
+    if maxFileSize is not None and fileSize > maxFileSize:
+        return False
+    return True
+
+
 class CopyItem:
     def __init__(self, srcPath, dstPath, fileName, fileSize, method, jobTask):
         self.jobTask = jobTask
@@ -386,6 +394,12 @@ class JobTask:
         copyItem = CopyItem(srcPath, dstPath, fileName, fileSize, self.job['method'], self)
         self.waiting.append(copyItem)
 
+    def hasFileSizeFilter(self):
+        return self.job.get('minFileSize') is not None or self.job.get('maxFileSize') is not None
+
+    def fileSizeAllowed(self, fileSize):
+        return isFileSizeAllowed(fileSize, self.job.get('minFileSize'), self.job.get('maxFileSize'))
+
     def delFile(self, path, fileName, size):
         """
         删除文件（或目录）
@@ -440,6 +454,22 @@ class JobTask:
                           isPath=1)
             raise e
 
+    def deleteTargetOnlyDir(self, dstPath, spec, dstRootPath, firstDst):
+        """Delete eligible files under a target-only directory, retaining the directory shell."""
+        if self.breakFlag:
+            return
+        try:
+            dstFiles = self.listDir(dstPath, firstDst, spec, dstRootPath, False)
+        except Exception:
+            return
+        for key, size in dstFiles.items():
+            if self.breakFlag:
+                return
+            if key.endswith('/'):
+                self.deleteTargetOnlyDir(dstPath + key, spec, dstRootPath, firstDst)
+            elif self.fileSizeAllowed(size):
+                self.delFile(dstPath, key, size)
+
     def ensurePath(self, path):
         if self.breakFlag:
             return
@@ -483,6 +513,8 @@ class JobTask:
         for key in srcFiles.keys():
             # 如果是文件
             if not key.endswith('/'):
+                if not self.fileSizeAllowed(srcFiles[key]):
+                    continue
                 # 目标目录没有这个文件或文件大小不匹配(即需要同步)
                 if key not in dstFiles or dstFiles[key] != srcFiles[key]:
                     self.copyFile(srcPath, dstPath, key, srcFiles[key])
@@ -499,7 +531,10 @@ class JobTask:
         if self.job['method'] == 1:
             for dstKey in dstFiles.keys():
                 if dstKey not in srcFiles:
-                    self.delFile(dstPath, dstKey, dstFiles[dstKey])
+                    if dstKey.endswith('/') and self.hasFileSizeFilter():
+                        self.deleteTargetOnlyDir(dstPath + dstKey, spec, dstRootPath, firstDst)
+                    elif dstKey.endswith('/') or self.fileSizeAllowed(dstFiles[dstKey]):
+                        self.delFile(dstPath, dstKey, dstFiles[dstKey])
 
     def syncWithOutHave(self, srcPath, dstPath, spec, srcRootPath, dstRootPath, firstDst):
         """
@@ -537,7 +572,7 @@ class JobTask:
                 break
             if key.endswith('/'):
                 self.syncWithOutHave(srcPath + key, dstPath + key, spec, srcRootPath, dstRootPath, firstDst)
-            else:
+            elif self.fileSizeAllowed(srcFiles[key]):
                 self.copyFile(srcPath, dstPath, key, srcFiles[key])
 
     def updateTaskStatus(self):

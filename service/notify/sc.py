@@ -14,7 +14,7 @@ def send(sendKey, title, timeout, content=''):
         if match:
             num = match.group(1)
             url = f'https://{num}.push.ft07.com/send/{sendKey}.send'
-            params['tags'] = 'TaoSync'
+            params['tags'] = 'OpenListSync'
         else:
             raise ValueError('Invalid sendkey format for sctp')
     else:

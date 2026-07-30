@@ -5,6 +5,15 @@ import os
 from common.commonUtils import generatePasswd, readOrSet
 
 sysConfig = None
+DEFAULT_PASSWORD = 'RANDOM'
+
+
+def _get_env_password():
+    for key in ('OPENLISTSYNC_PASSWORD', 'TAO_PASSWORD', 'TAO_PASSWD'):
+        value = os.getenv(key)
+        if value is not None and value.strip():
+            return value
+    return DEFAULT_PASSWORD
 
 
 def getPasswordStr():
@@ -31,6 +40,7 @@ def getConfig():
             'task_save': 0,
             'timeout': 72
         }
+        password = _get_env_password()
         if os.path.exists('data/config.ini'):
             try:
                 cfg = configparser.ConfigParser(inline_comment_prefixes=(';', '#'))
@@ -45,14 +55,15 @@ def getConfig():
                     for key in section_data:
                         val = str(section_data[key]).strip()
                         key_lower = key.lower()
-                        if key_lower in sCfg:
+                        if key_lower in {'password', 'openlistsync_password', 'tao_password', 'tao_passwd'}:
+                            password = val
+                        elif key_lower in sCfg:
                             sCfg[key_lower] = int(val)
                         else:
                             os.environ[key] = val
             except Exception as e:
                 logger = logging.getLogger()
-                logger.error(f"配置文件读取失败，将使用默认配置_/_config.ini read error: {e}")
-                logger.exception(e)
+                logger.error(f"配置文件读取失败，将使用默认配置_/_config.ini read error: {type(e).__name__}")
         else:
             try:
                 sCfg['port'] = int(os.getenv('OPENLISTSYNC_PORT', 8023))
@@ -66,12 +77,15 @@ def getConfig():
                 logger = logging.getLogger()
                 logger.error(f"环境变量读取失败，将使用默认配置_/_ENV read error: {e}")
                 logger.exception(e)
+        if not password or not password.strip():
+            password = DEFAULT_PASSWORD
         sysConfig = {
             'db': {
                 'dbname': dbname
             },
             'server': {
                 'passwdStr': passwdStr,
+                'password': password,
                 **sCfg
             }
         }

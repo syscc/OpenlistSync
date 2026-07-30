@@ -1,0 +1,70 @@
+success: Success
+lost_part: Incomplete parameters
+same_exists: The same data already exists, please check!
+sign_in: Please sign in
+login_expired: Login expired
+running_success: "Running at: {url}"
+init_sql: Database initialization completed
+admin_password_generated: "Random password generated for admin: {}"
+admin_password_configured: The configured administrator password is in use
+openlist_not_found: OpenList not found, may have been deleted
+del_job_course_error: An error occurred during job startup and the job will be automatically deleted. The job is {}
+job_not_found: The job was not found and may have been deleted
+task_not_found: Task not found, may have been deleted
+user_not_found: User does not exist
+openlist_connect_fail: OpenList connection failed, please check whether it is filled in correctly
+address_incorrect: The OpenList address format is incorrect
+code_not_200: Code not 200
+openlist_un_auth: OpenList authentication failed, possibly because the token has expired
+openlist_fail_code_reason: "OpenList returns {}, reason: {}"
+without_token: Token is required when address changes
+add_openlist_client_fail: "Failed to add OpenList client, reason: {}"
+task_may_delete: Task not found. It may have been deleted in OpenList, or OpenList may have restarted and lost its task record
+do_job_err: "Task execution failed due to: {}"
+src: source
+dst: target
+scan_error: "{} directory scan failed due to: {}"
+copy_success_but_delete_fail: "The file was copied successfully, but the source file failed to be deleted due to: {}"
+no_job_for_run: No jobs available to execute
+job_running: There is a task currently being executed, please try again later
+interval_lost: When creating an interval job, the interval is required
+cron_lost: When creating a cron job, at least one cron field must be non-empty
+cannot_resume_lost_job: The job does not exist and cannot be restored. Please delete it and create it again
+stop_fail: "Failed to stop the scheduled task due to: {}"
+disable_fail: "Failed to pause the scheduled task due to: {}"
+cancel_fail: "The task cancellation process failed due to: {}"
+disable_then_edit: Please disable the job before editing it
+disabled_job_cannot_run: Disabled jobs cannot be run
+cannot_disable_manual_job: Manual-only jobs cannot be disabled
+file_size_invalid: File size filters must be non-negative integer byte values
+file_size_range_invalid: The minimum file size cannot exceed the maximum file size
+notify_config_invalid: The notification configuration is incomplete or invalid
+notify_method_invalid: Unsupported notification method
+notify_response_invalid: The notification service returned an unrecognized response
+notify_request_failed: The notification service request failed
+log_del_success: The log file {} has been successfully deleted
+log_del_fail: "Failed to delete log file {}, reason: {}"
+log_rename_start: The log scheduled renaming task was started successfully
+keep_all_log: The log retention time is 0, all logs will be retained
+keep_all_task: The task retention time is 0, all tasks will be retained
+clear_task_start: The scheduled cleanup task was started successfully
+passwd_wrong: Wrong password
+key_wrong: Wrong key
+passwd_wrong_max_time: The password was incorrect more than 3 times within 5 minutes. Please try again later
+task_status:
+  - waiting
+  - in progress
+  - success
+  - complete (partially failed)
+  - aborted due to reboot
+  - timeout
+  - failed
+  - aborted manually
+  - no files need sync
+task_end_msg_title: "{} - OpenListSync"
+task_end_msg_content: "The job with source directory {} and target directory {} has completed execution.\n\nThere are {} files that need to be synchronized, {} succeeded and {} failed."
+task_end_msg_content_ext: "\n\nThis synchronization took {} and successfully synchronized {} of files."
+hms: "{} hours {} minutes {} seconds"
+task_end_msg_error: "Failed due to: {}"
+notify_error: "Failed to send notification due to: {}"
+notify_test_msg: This is an OpenListSync test message sent by yourself. When you see this message, your configuration is correct and available.

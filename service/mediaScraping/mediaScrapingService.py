@@ -529,7 +529,7 @@ def _task_group_key(openlist_id, path, task_name):
 def _task_request(req, config):
     request = {
         key: value for key, value in (req or {}).items()
-        if key != '__user'
+        if key not in ('__user', '__lang')
     }
     request['config'] = config
     request['apply'] = _to_bool(request.get('apply'), True)
