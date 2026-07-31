@@ -1,12 +1,12 @@
 <script setup>
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { jobDeleteTask, jobGetTask } from "@/api/job";
+import { jobDeleteTask, jobGetTask, jobPut } from "@/api/job";
 import menuRefresh from "./components/menuRefresh.vue";
 import taskCurrent from "./components/taskCurrent.vue";
 import taskStatus from "@/utils/taskStatus";
 import { parseTime } from "@/utils/utils";
-import { Back, Delete, View } from "@element-plus/icons-vue";
+import { ArrowLeft, CirclePlay, Eye, Trash2 } from "@lucide/vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { useMediaQuery } from "@vueuse/core";
@@ -28,6 +28,7 @@ const params = ref({
 });
 const loading = ref(false);
 const btnLoading = ref(false);
+const runLoading = ref(false);
 const currentHeight = ref(0);
 
 const getTaskList = () => {
@@ -76,6 +77,25 @@ const goback = () => {
   router.go(-1);
 };
 
+const runJob = () => {
+  if (params.value.id == null || runLoading.value) return;
+  runLoading.value = true;
+  jobPut({
+    id: params.value.id,
+    pause: null,
+  })
+    .then((res) => {
+      ElMessage({
+        message: res.msg,
+        type: "success",
+      });
+      getTaskList();
+    })
+    .finally(() => {
+      runLoading.value = false;
+    });
+};
+
 const handleSizeChange = (val) => {
   params.value.pageSize = val;
   getTaskList();
@@ -95,7 +115,12 @@ const currentChange = (val) => {
 <template>
   <div class="task table-page" :style="isMobile ? undefined : `min-height: calc(320px + ${currentHeight}px)`">
     <div class="top-box">
-      <el-button type="primary" :icon="Back" size="small" @click="goback">{{ $t("common.back") }}</el-button>
+      <div class="top-box-left">
+        <el-button plain :icon="ArrowLeft" size="small" @click="goback">{{ $t("common.back") }}</el-button>
+        <el-button type="primary" :icon="CirclePlay" size="small" :loading="runLoading" @click="runJob">
+          {{ $t("home.manualRun") }}
+        </el-button>
+      </div>
       <div class="top-box-title">{{ $t("task.jobDetail") }}</div>
       <menuRefresh :loading="loading" :autoRefresh="false" :needShow="1" @getData="getTaskList" />
     </div>
@@ -141,10 +166,10 @@ const currentChange = (val) => {
         </el-table-column>
         <el-table-column :label="$t('common.operate')" width="210">
           <template #default="scope">
-            <el-button type="danger" :icon="Delete" @click="delTask(scope.row.id)" :loading="btnLoading" :disabled="scope.row.status == 1" size="small">
+            <el-button type="danger" text :icon="Trash2" @click="delTask(scope.row.id)" :loading="btnLoading" :disabled="scope.row.status == 1" size="small">
               {{ scope.row.status == 1 ? $t("task.deleteUnavailable") : $t("common.delete") }}
             </el-button>
-            <el-button type="primary" :icon="View" @click="detail(scope.row.id)" :loading="btnLoading" size="small" v-if="scope.row.allNum != 0">
+            <el-button plain :icon="Eye" @click="detail(scope.row.id)" :loading="btnLoading" size="small" v-if="scope.row.allNum != 0">
               {{ $t("home.detail") }}
             </el-button>
           </template>
@@ -175,6 +200,23 @@ const currentChange = (val) => {
 <style lang="scss" scoped>
 .task {
   overflow-y: auto;
+
+  .task-table {
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 14px);
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
+  }
+
+  .top-box-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    :deep(.el-button + .el-button) {
+      margin-left: 0;
+    }
+  }
 
   .task-current,
   .table-box {
@@ -220,7 +262,7 @@ const currentChange = (val) => {
         order: 0;
       }
 
-      > .el-button {
+      .top-box-left {
         order: 1;
       }
 

@@ -1,49 +1,58 @@
 <script setup>
-import { useDark, useToggle } from '@vueuse/core';
+import { Moon, Sun } from '@lucide/vue';
+import { useDark } from '@vueuse/core';
+
 const isDark = useDark();
-const toggleDark = useToggle(isDark);
 </script>
 
 <template>
-    <el-switch :aria-checked="false" :aria-disabled="false" :aria-label="$t('theme.toggle')" @change="toggleDark" v-model="isDark"
-        style="--el-switch-on-color: #2c2c2c; --el-switch-off-color: #f2f2f2">
+    <el-switch v-model="isDark" class="theme-switch" :aria-label="$t('theme.toggle')">
         <template #active-action>
-            <el-icon>
-                <svg viewBox="0 0 24 24" class="dark-icon">
-                    <path
-                        d="M11.01 3.05C6.51 3.54 3 7.36 3 12a9 9 0 0 0 9 9c4.63 0 8.45-3.5 8.95-8c.09-.79-.78-1.42-1.54-.95A5.403 5.403 0 0 1 11.1 7.5c0-1.06.31-2.06.84-2.89c.45-.67-.04-1.63-.93-1.56z"
-                        fill="currentColor"></path>
-                </svg>
-            </el-icon>
+            <Moon class="dark-icon" :size="15" :stroke-width="1.75" aria-hidden="true" />
         </template>
         <template #inactive-action>
-            <el-icon>
-                <svg viewBox="0 0 24 24" class="light-icon">
-                    <path
-                        d="M6.05 4.14l-.39-.39a.993.993 0 0 0-1.4 0l-.01.01a.984.984 0 0 0 0 1.4l.39.39c.39.39 1.01.39 1.4 0l.01-.01a.984.984 0 0 0 0-1.4zM3.01 10.5H1.99c-.55 0-.99.44-.99.99v.01c0 .55.44.99.99.99H3c.56.01 1-.43 1-.98v-.01c0-.56-.44-1-.99-1zm9-9.95H12c-.56 0-1 .44-1 .99v.96c0 .55.44.99.99.99H12c.56.01 1-.43 1-.98v-.97c0-.55-.44-.99-.99-.99zm7.74 3.21c-.39-.39-1.02-.39-1.41-.01l-.39.39a.984.984 0 0 0 0 1.4l.01.01c.39.39 1.02.39 1.4 0l.39-.39a.984.984 0 0 0 0-1.4zm-1.81 15.1l.39.39a.996.996 0 1 0 1.41-1.41l-.39-.39a.993.993 0 0 0-1.4 0c-.4.4-.4 1.02-.01 1.41zM20 11.49v.01c0 .55.44.99.99.99H22c.55 0 .99-.44.99-.99v-.01c0-.55-.44-.99-.99-.99h-1.01c-.55 0-.99.44-.99.99zM12 5.5c-3.31 0-6 2.69-6 6s2.69 6 6 6s6-2.69 6-6s-2.69-6-6-6zm-.01 16.95H12c.55 0 .99-.44.99-.99v-.96c0-.55-.44-.99-.99-.99h-.01c-.55 0-.99.44-.99.99v.96c0 .55.44.99.99.99zm-7.74-3.21c.39.39 1.02.39 1.41 0l.39-.39a.993.993 0 0 0 0-1.4l-.01-.01a.996.996 0 0 0-1.41 0l-.39.39c-.38.4-.38 1.02.01 1.41z"
-                        fill="currentColor"></path>
-                </svg>
-            </el-icon>
+            <Sun class="light-icon" :size="15" :stroke-width="1.75" aria-hidden="true" />
         </template>
     </el-switch>
 </template>
 
 <style lang="scss" scoped>
 .light-icon {
-    color: #606266;
+    color: #9a6700;
 }
 
 .dark-icon {
-    border-radius: 50%;
-    color: #cfd3dc;
-    background-color: #141414;
+    color: #d7e2f3;
 }
 
-// :deep(.el-switch__core) {
-//     border: 1px solid #dcdfe6;
-// }
+.theme-switch {
+    --el-switch-off-color: rgba(245, 158, 11, 0.14);
+    --el-switch-on-color: #273449;
+}
+
+:deep(.el-switch__core) {
+    min-width: 44px;
+    height: 26px;
+    border-color: var(--border-color);
+}
 
 :deep(.el-switch__action) {
-    background-color: transparent;
+    width: 20px;
+    height: 20px;
+    color: var(--text-primary);
+    background-color: var(--home-item-background-color);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+}
+
+:deep(.el-switch__input:focus-visible + .el-switch__core) {
+    outline: 2px solid var(--active-color);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :deep(.el-switch__core),
+    :deep(.el-switch__action) {
+        transition: none;
+    }
 }
 </style>

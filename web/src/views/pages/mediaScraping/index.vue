@@ -1,40 +1,79 @@
 <template>
 	<div class="media-scraping-page">
-		<div class="page-title">{{ $t('mediaScraping.title') }}</div>
+		<div class="page-heading">
+			<div class="page-heading-icon" aria-hidden="true"><Clapperboard /></div>
+			<div class="page-title">{{ $t('mediaScraping.title') }}</div>
+		</div>
+		<nav class="mobile-workbench-nav" :aria-label="$t('mediaScraping.title')">
+			<button type="button" :class="{active: activeMobileSection === 'browser'}"
+				:aria-current="activeMobileSection === 'browser' ? 'location' : undefined"
+				@click="scrollToWorkbench('browser')">
+				<Folder aria-hidden="true" />
+				<span>{{ $t('mediaScraping.mediaPath') }}</span>
+			</button>
+			<button type="button" :class="{active: activeMobileSection === 'preview'}"
+				:aria-current="activeMobileSection === 'preview' ? 'location' : undefined"
+				@click="scrollToWorkbench('preview')">
+				<Eye aria-hidden="true" />
+				<span>{{ $t('mediaScraping.namingPreview') }}</span>
+			</button>
+			<button type="button" :class="{active: activeMobileSection === 'tasks'}"
+				:aria-current="activeMobileSection === 'tasks' ? 'location' : undefined"
+				@click="scrollToWorkbench('tasks')">
+				<ListChecks aria-hidden="true" />
+				<span>{{ $t('mediaScraping.renameTasks') }}</span>
+			</button>
+		</nav>
 		<div class="workbench">
-			<div class="panel browser-panel">
+			<div ref="browserPanel" class="panel browser-panel">
 				<div class="panel-title">{{ $t('mediaScraping.mediaPath') }}</div>
 				<div class="default-engine">
 					<div>
 						<div class="engine-label">{{ $t('mediaScraping.defaultEngine') }}</div>
 						<div class="engine-name">{{selectedEngineName}}</div>
 					</div>
-					<el-button size="small" @click="toScrapingConfig">{{ $t('mediaScraping.scrapingConfig') }}</el-button>
+					<el-button size="small" @click="toScrapingConfig">
+						<Settings2 aria-hidden="true" />
+						<span>{{ $t('mediaScraping.scrapingConfig') }}</span>
+					</el-button>
 				</div>
 				<div class="path-bar">
 						<el-input v-model="currentPath" size="small" :placeholder="$t('mediaScraping.pathPlaceholder')" @keyup.enter="browsePath(currentPath)">
 							<template #append>
-								<el-button @click="browsePath(currentPath)">{{ $t('mediaScraping.jump') }}</el-button>
+								<el-button @click="browsePath(currentPath)">
+									<ArrowRight aria-hidden="true" />
+									<span>{{ $t('mediaScraping.jump') }}</span>
+								</el-button>
 							</template>
 					</el-input>
 				</div>
 				<div class="browser-actions">
-						<el-button size="small" @click="goParent">{{ $t('mediaScraping.parent') }}</el-button>
+						<el-button size="small" @click="goParent">
+							<ArrowUp aria-hidden="true" />
+							<span>{{ $t('mediaScraping.parent') }}</span>
+						</el-button>
 						<el-button size="small" :loading="browseLoading" :title="$t('mediaScraping.forceRefreshTitle')"
-						@click="browsePath(currentPath, true)">{{ $t('mediaScraping.refresh') }}</el-button>
+						@click="browsePath(currentPath, true)">
+							<RefreshCw aria-hidden="true" />
+							<span>{{ $t('mediaScraping.refresh') }}</span>
+						</el-button>
 				</div>
 				<div class="file-list" v-loading="browseLoading">
 					<div class="file-row" v-for="item in browserItems" :key="item.path"
 						:class="{disabled: !item.isDir && !isMediaFile(item), selected: !item.isDir && selectedFilePath === item.path}"
-						@click="selectBrowserItem(item)">
-							<el-icon><component :is="item.isDir ? 'Folder' : 'Document'" /></el-icon>
+						role="button" :tabindex="isBrowserItemActionable(item) ? 0 : -1"
+						:aria-disabled="!isBrowserItemActionable(item)" :aria-pressed="item.isDir ? undefined : selectedFilePath === item.path"
+						@click="selectBrowserItem(item)" @keydown.enter.prevent="selectBrowserItem(item)"
+						@keydown.space.prevent="selectBrowserItem(item)">
+							<Folder v-if="item.isDir" aria-hidden="true" />
+							<File v-else aria-hidden="true" />
 						<span>{{item.name}}</span>
 					</div>
 					<div v-if="browserItems.length === 0 && !browseLoading" class="empty">{{ $t('mediaScraping.emptyContent') }}</div>
 				</div>
 			</div>
 
-			<div class="panel preview-panel">
+			<div ref="previewPanel" class="panel preview-panel">
 				<div class="preview-top">
 					<div>
 						<div class="panel-title">{{ $t('mediaScraping.namingPreview') }}</div>
@@ -54,7 +93,10 @@
 					<el-input v-model="tmdbId" size="small" class="tmdb-id-input" placeholder="TMDb ID" clearable
 						@input="clearPreview">
 							<template #append>
-								<el-button :title="$t('mediaScraping.searchTmdb')" @click="openTmdbSearch">{{ $t('mediaScraping.search') }}</el-button>
+								<el-button :title="$t('mediaScraping.searchTmdb')" @click="openTmdbSearch">
+									<SearchIcon aria-hidden="true" />
+									<span>{{ $t('mediaScraping.search') }}</span>
+								</el-button>
 							</template>
 					</el-input>
 					<el-input v-model="seasonNumber" size="small" class="season-input" :placeholder="$t('mediaScraping.season')" clearable
@@ -63,11 +105,13 @@
 					<el-button type="primary" size="small" :loading="previewLoading"
 						:disabled="normalizePath(previewPath) === '/'"
 						@click="previewNaming">
-						{{ $t('mediaScraping.preview') }}
+						<Eye aria-hidden="true" />
+						<span>{{ $t('mediaScraping.preview') }}</span>
 					</el-button>
 					<el-button type="danger" size="small" :loading="runLoading" :disabled="previewLoading || previewItems.length === 0"
 						@click="applyNaming">
-						{{ $t('mediaScraping.apply') }}
+						<Play aria-hidden="true" />
+						<span>{{ $t('mediaScraping.apply') }}</span>
 					</el-button>
 				</div>
 
@@ -103,13 +147,16 @@
 			</div>
 
 		</div>
-		<div class="panel task-log-panel">
+		<div ref="tasksPanel" class="panel task-log-panel">
 			<div class="log-top">
 				<div>
 					<div class="panel-title">{{ $t('mediaScraping.renameTasks') }}</div>
 					<div class="current-path">{{ $t('mediaScraping.groupHint') }}</div>
 				</div>
-				<el-button size="small" :loading="taskLoading" @click="getTaskList">{{ $t('mediaScraping.refresh') }}</el-button>
+				<el-button size="small" :loading="taskLoading" @click="getTaskList">
+					<RefreshCw aria-hidden="true" />
+					<span>{{ $t('mediaScraping.refresh') }}</span>
+				</el-button>
 			</div>
 				<el-table :data="taskData.taskList" size="small" class="task-table" height="260" :empty-text="$t('mediaScraping.noRenameTasks')"
 				v-loading="taskLoading">
@@ -145,9 +192,18 @@
 				<el-table-column :label="$t('common.operate')" width="250">
 						<template #default="scope">
 							<el-button size="small" type="primary" @click="manualRunTask(scope.row)"
-							:loading="taskActionLoading">{{ $t('mediaScraping.manualRun') }}</el-button>
-							<el-button size="small" type="primary" @click="detailTask(scope.row)">{{ $t('mediaScraping.detail') }}</el-button>
-							<el-button size="small" type="danger" @click="deleteTask(scope.row)">{{ $t('common.delete') }}</el-button>
+							:loading="taskActionLoading">
+								<RotateCcw aria-hidden="true" />
+								<span>{{ $t('mediaScraping.manualRun') }}</span>
+							</el-button>
+							<el-button size="small" @click="detailTask(scope.row)">
+								<Eye aria-hidden="true" />
+								<span>{{ $t('mediaScraping.detail') }}</span>
+							</el-button>
+							<el-button size="small" type="danger" plain @click="deleteTask(scope.row)">
+								<Trash2 aria-hidden="true" />
+								<span>{{ $t('common.delete') }}</span>
+							</el-button>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -158,44 +214,61 @@
 				</el-pagination>
 			</div>
 		</div>
-		<div v-if="tmdbSearchVisible" class="tmdb-search-mask" @click.self="closeTmdbSearch">
-			<div class="tmdb-search-panel" @click.stop>
-				<div class="tmdb-search-bar">
-					<button class="tmdb-search-submit" type="button" :title="$t('mediaScraping.search')" @click="searchTmdb">
-							<el-icon><Search /></el-icon>
-					</button>
-					<input ref="tmdbSearchInput" v-model="tmdbSearchKeyword" class="tmdb-search-input" type="text"
-						:placeholder="$t('mediaScraping.searchPlaceholder')" @keydown.enter.prevent="searchTmdb">
-					<button class="tmdb-search-close" type="button" :title="$t('mediaScraping.close')" @click="closeTmdbSearch">
-							<el-icon><Close /></el-icon>
-					</button>
-				</div>
+		<el-dialog v-model="tmdbSearchVisible" class="tmdb-search-dialog" :title="$t('mediaScraping.searchTmdb')"
+			width="min(760px, calc(100vw - 32px))" align-center destroy-on-close @opened="focusTmdbSearch">
+			<div class="tmdb-search-bar">
+				<el-input ref="tmdbSearchInput" v-model="tmdbSearchKeyword" size="large"
+					:placeholder="$t('mediaScraping.searchPlaceholder')" @keyup.enter="searchTmdb">
+					<template #prefix><SearchIcon aria-hidden="true" /></template>
+					<template #append>
+						<el-button :loading="tmdbSearchLoading" @click="searchTmdb">
+							<SearchIcon aria-hidden="true" />
+							<span>{{ $t('mediaScraping.search') }}</span>
+						</el-button>
+					</template>
+				</el-input>
+			</div>
 				<div class="tmdb-result-list" v-loading="tmdbSearchLoading">
-					<div v-for="item in tmdbSearchResults" :key="item.type + '-' + item.id" class="tmdb-result-item"
+					<button v-for="item in tmdbSearchResults" :key="item.type + '-' + item.id" type="button" class="tmdb-result-item"
 						@click="selectTmdbResult(item)">
-						<div class="tmdb-poster">
+						<span class="tmdb-poster">
 							<img v-if="item.posterUrl" :src="item.posterUrl" :alt="item.title">
-								<el-icon v-else><Picture /></el-icon>
-						</div>
-						<div class="tmdb-info">
-							<div class="tmdb-title">
+							<ImageIcon v-else aria-hidden="true" />
+						</span>
+						<span class="tmdb-info">
+							<span class="tmdb-title">
 								<span>{{item.title}}</span>
 								<span v-if="item.year">({{item.year}})</span>
 									<el-tag size="small" effect="dark" class="tmdb-type">{{mediaTypeText(item.type)}}</el-tag>
 								<span class="tmdb-id">ID {{item.id}}</span>
-							</div>
-							<div v-if="item.originalTitle && item.originalTitle !== item.title" class="tmdb-original">{{item.originalTitle}}</div>
-							<div class="tmdb-overview">{{item.overview || $t('mediaScraping.noOverview')}}</div>
-						</div>
-					</div>
+							</span>
+							<span v-if="item.originalTitle && item.originalTitle !== item.title" class="tmdb-original">{{item.originalTitle}}</span>
+							<span class="tmdb-overview">{{item.overview || $t('mediaScraping.noOverview')}}</span>
+						</span>
+					</button>
 					<div v-if="tmdbSearchResults.length === 0 && tmdbSearched && !tmdbSearchLoading" class="empty">{{ $t('mediaScraping.noResults') }}</div>
 				</div>
-			</div>
-		</div>
+		</el-dialog>
 	</div>
 </template>
 
 <script>
+	import {
+		ArrowRight,
+		ArrowUp,
+		Clapperboard,
+		Eye,
+		File,
+		Folder,
+		Image as ImageIcon,
+		ListChecks,
+		Play,
+		RefreshCw,
+		RotateCcw,
+		Search as SearchIcon,
+		Settings2,
+		Trash2
+	} from "@lucide/vue";
 	import {
 		openlistGet
 	} from "@/api/job";
@@ -212,6 +285,22 @@
 
 	export default {
 		name: 'MediaScraping',
+		components: {
+			ArrowRight,
+			ArrowUp,
+			Clapperboard,
+			Eye,
+			File,
+			Folder,
+			ImageIcon,
+			ListChecks,
+			Play,
+			RefreshCw,
+			RotateCcw,
+			SearchIcon,
+			Settings2,
+			Trash2
+		},
 		data() {
 			return {
 				openlistList: [],
@@ -244,7 +333,10 @@
 				tmdbSearchKeyword: '',
 				tmdbSearchResults: [],
 				tmdbSearchLoading: false,
-				tmdbSearched: false
+				tmdbSearched: false,
+				activeMobileSection: 'browser',
+				mobileScrollContainer: null,
+				mobileScrollFrame: 0
 			};
 		},
 		computed: {
@@ -270,15 +362,70 @@
 				this.ensureDefaultEngine();
 			});
 		},
-		beforeUnmount() {},
+		mounted() {
+			this.mobileScrollContainer = this.$el.closest('.app-main');
+			this.mobileScrollContainer?.addEventListener('scroll', this.scheduleMobileSectionUpdate, { passive: true });
+			window.addEventListener('resize', this.scheduleMobileSectionUpdate, { passive: true });
+			this.$nextTick(this.updateActiveMobileSection);
+		},
+		beforeUnmount() {
+			this.mobileScrollContainer?.removeEventListener('scroll', this.scheduleMobileSectionUpdate);
+			window.removeEventListener('resize', this.scheduleMobileSectionUpdate);
+			if (this.mobileScrollFrame) {
+				cancelAnimationFrame(this.mobileScrollFrame);
+			}
+		},
 		methods: {
+			scheduleMobileSectionUpdate() {
+				if (this.mobileScrollFrame) return;
+				this.mobileScrollFrame = requestAnimationFrame(() => {
+					this.mobileScrollFrame = 0;
+					this.updateActiveMobileSection();
+				});
+			},
+			updateActiveMobileSection() {
+				if (!window.matchMedia('(max-width: 768px)').matches) return;
+				const container = this.mobileScrollContainer;
+				if (!container) return;
+
+				if (container.scrollTop + container.clientHeight >= container.scrollHeight - 2) {
+					this.activeMobileSection = 'tasks';
+					return;
+				}
+
+				const sections = [
+					['browser', this.$refs.browserPanel],
+					['preview', this.$refs.previewPanel],
+					['tasks', this.$refs.tasksPanel]
+				];
+				let active = 'browser';
+				for (const [name, panel] of sections) {
+					if (panel && panel.getBoundingClientRect().top <= 112) {
+						active = name;
+					}
+				}
+				this.activeMobileSection = active;
+			},
+			scrollToWorkbench(section) {
+				const refMap = {
+					browser: 'browserPanel',
+					preview: 'previewPanel',
+					tasks: 'tasksPanel'
+				};
+				this.activeMobileSection = section;
+				const target = this.$refs[refMap[section]];
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			},
 			defaultConfig() {
-				return {
-					defaultOpenlistId: null,
-					openlistIds: [],
-					tmdbApiKey: '',
-					tmdbBearerToken: '',
-					tmdbLanguage: 'zh-CN',
+					return {
+						defaultOpenlistId: null,
+						openlistIds: [],
+						tmdbApiKey: '',
+						tmdbBearerToken: '',
+						tmdbApiUrl: 'https://api.themoviedb.org',
+						tmdbLanguage: 'zh-CN',
 					tmdbIncludeAdult: false,
 					tmdbRequired: true,
 					tmdbTimeout: 30,
@@ -384,6 +531,9 @@
 					return normalized && name.endsWith(normalized.startsWith('.') ? normalized : `.${normalized}`);
 				});
 			},
+			isBrowserItemActionable(item) {
+				return Boolean(item && (item.isDir || this.isMediaFile(item)));
+			},
 			selectBrowserItem(item) {
 				if (item && item.isDir) {
 					this.browsePath(item.path);
@@ -419,15 +569,15 @@
 				if (!this.tmdbSearchKeyword) {
 					this.tmdbSearchKeyword = this.defaultSearchKeyword();
 				}
-				this.$nextTick(() => {
-					if (this.$refs.tmdbSearchInput) {
-						this.$refs.tmdbSearchInput.focus();
-						this.$refs.tmdbSearchInput.select();
-					}
-				});
 			},
-			closeTmdbSearch() {
-				this.tmdbSearchVisible = false;
+			focusTmdbSearch() {
+				const input = this.$refs.tmdbSearchInput;
+				if (input) {
+					input.focus();
+					if (input.input) {
+						input.input.select();
+					}
+				}
 			},
 			searchTmdb() {
 				const keyword = (this.tmdbSearchKeyword || '').trim();
@@ -679,13 +829,48 @@
 	.media-scraping-page {
 		padding: 24px;
 		width: 100%;
+		height: 100%;
+		min-height: 680px;
 		box-sizing: border-box;
+		display: grid;
+		grid-template-rows: auto minmax(0, 3fr) minmax(0, 2fr);
+		gap: 12px;
+		color: var(--text-primary);
+
+		.page-heading {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			min-height: 32px;
+		}
+
+		.page-heading-icon {
+			width: 32px;
+			height: 32px;
+			border: 1px solid color-mix(in srgb, var(--active-color) 24%, transparent);
+				border-radius: 8px;
+			background: var(--brand-soft);
+			color: var(--active-color);
+			display: grid;
+			place-items: center;
+		}
+
+		.page-heading-icon svg {
+			width: 17px;
+			height: 17px;
+			stroke-width: 1.8;
+		}
 
 		.page-title {
 			font-size: 20px;
-			font-weight: bold;
-			margin-bottom: 16px;
+			font-weight: 700;
+				letter-spacing: 0;
+			margin-bottom: 4px;
 			color: var(--text-primary);
+		}
+
+		.mobile-workbench-nav {
+			display: none;
 		}
 
 		.workbench {
@@ -693,28 +878,41 @@
 			grid-template-columns: 320px minmax(520px, 1fr);
 			gap: 14px;
 			align-items: stretch;
-			height: 572px;
+			height: auto;
+			min-height: 0;
 		}
 
 		.panel {
-			background-color: var(--home-item-background-color);
+			position: relative;
+			background: var(--home-item-background-color);
 			border: 1px solid var(--border-color);
-			border-radius: 6px;
+			border-radius: 8px;
 			padding: 16px;
 			box-sizing: border-box;
 			min-height: 160px;
 			min-width: 0;
+			box-shadow: 0 10px 30px rgba(15, 23, 42, .045);
 		}
 
 		.panel-title {
-			font-size: 16px;
-			font-weight: bold;
+			font-size: 15px;
+			font-weight: 700;
+				letter-spacing: 0;
 			margin-bottom: 12px;
 			color: var(--text-primary);
 		}
 
 		.task-log-panel {
-			margin-top: 12px;
+			margin-top: 0;
+			display: flex;
+			flex-direction: column;
+			min-height: 0;
+			overflow: hidden;
+		}
+
+		.task-table {
+			flex: 1;
+			min-height: 0;
 		}
 
 		.log-top {
@@ -737,15 +935,15 @@
 		}
 
 		.log-count.ok {
-			color: #67c23a;
+			color: var(--success-color);
 		}
 
 		.log-count.skip {
-			color: #909399;
+			color: var(--text-muted);
 		}
 
 		.log-count.fail {
-			color: #f56c6c;
+			color: var(--fail-color);
 		}
 
 		.default-engine {
@@ -753,9 +951,10 @@
 			align-items: center;
 			justify-content: space-between;
 			gap: 10px;
-			padding: 10px;
+			padding: 11px 12px;
 			background-color: var(--home-background-color);
-			border-radius: 4px;
+			border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+				border-radius: 8px;
 		}
 
 		.engine-label {
@@ -794,22 +993,39 @@
 			flex: 1;
 			min-height: 0;
 			overflow: auto;
-			border-top: 1px solid var(--border-color);
+			border: 1px solid var(--border-color);
+				border-radius: 8px;
 		}
 
 		.file-row {
-			height: 34px;
+			min-height: 38px;
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			padding: 0 4px;
+			padding: 0 10px;
 			cursor: pointer;
 			border-bottom: 1px solid var(--border-color);
 			color: var(--text-primary);
+			transition: background-color .16s ease, color .16s ease, box-shadow .16s ease;
 		}
 
-		.file-row:hover {
-			background-color: rgba(64, 158, 255, .12);
+		.file-row:hover:not(.disabled) {
+			background-color: var(--surface-hover);
+		}
+
+		.file-row:focus-visible,
+		.tmdb-result-item:focus-visible,
+		.mobile-workbench-nav button:focus-visible {
+			outline: 2px solid var(--active-color);
+			outline-offset: -2px;
+		}
+
+		.file-row svg {
+			width: 17px;
+			height: 17px;
+			flex: none;
+			stroke-width: 1.7;
+			color: var(--text-muted);
 		}
 
 		.file-row.disabled {
@@ -818,8 +1034,12 @@
 		}
 
 		.file-row.selected {
-			background-color: rgba(64, 158, 255, .16);
+			background-color: var(--brand-soft);
 			box-shadow: inset 3px 0 0 var(--el-color-primary);
+		}
+
+		.file-row.selected svg {
+			color: var(--active-color);
 		}
 
 		.file-row span {
@@ -884,14 +1104,16 @@
 		}
 
 		.conflict-text {
-			color: #f56c6c;
+			color: var(--fail-color);
 		}
 
 		.root-renames {
+			max-height: 126px;
+			overflow-y: auto;
 			margin-bottom: 10px;
 			padding: 8px;
-			background-color: rgba(64, 158, 255, .08);
-			border-radius: 3px;
+			background-color: var(--info-soft);
+			border-radius: 8px;
 		}
 
 		.root-rename-item {
@@ -907,6 +1129,7 @@
 		.preview-table {
 			width: 100%;
 			flex: 1;
+			min-height: 0;
 		}
 
 		.path-cell {
@@ -915,112 +1138,60 @@
 		}
 
 		.path-cell.changed {
-			color: #67c23a;
+			color: var(--success-color);
 		}
 
 		.path-cell.conflict {
-			color: #f56c6c;
+			color: var(--fail-color);
 		}
 
 		.stderr {
-			color: #f56c6c;
-		}
-
-		.tmdb-search-mask {
-			position: fixed;
-			inset: 0;
-			z-index: 4000;
-			background-color: rgba(0, 0, 0, .68);
-			display: flex;
-			justify-content: center;
-			align-items: flex-start;
-			padding-top: 18vh;
-			box-sizing: border-box;
-		}
-
-		.tmdb-search-panel {
-			width: min(760px, calc(100vw - 40px));
-			max-height: 72vh;
-			background-color: var(--home-item-background-color);
-			border: 1px solid var(--border-color);
-			border-radius: 8px;
-			box-shadow: 0 18px 60px rgba(0, 0, 0, .45);
-			overflow: hidden;
-			display: flex;
-			flex-direction: column;
+			color: var(--fail-color);
 		}
 
 		.tmdb-search-bar {
-			height: 66px;
-			display: flex;
-			align-items: center;
-			gap: 12px;
-			padding: 0 18px;
-			border-bottom: 1px solid var(--border-color);
-			box-sizing: border-box;
+			padding-bottom: 14px;
 		}
 
-		.tmdb-search-input {
-			flex: 1;
-			min-width: 0;
-			height: 100%;
-			border: 0;
-			outline: 0;
-			background: transparent;
-			color: var(--text-primary);
-			font-size: 20px;
-			letter-spacing: 0;
-		}
-
-		.tmdb-search-input::placeholder {
-			color: #909399;
-		}
-
-		.tmdb-search-submit,
-		.tmdb-search-close {
-			width: 38px;
-			height: 38px;
-			border: 0;
-			padding: 0;
-			background: transparent;
-			color: var(--text-secondary);
-			cursor: pointer;
-			font-size: 26px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.tmdb-search-submit:hover,
-		.tmdb-search-close:hover {
-			color: var(--active-color);
+		.tmdb-search-bar svg {
+			width: 17px;
+			height: 17px;
 		}
 
 		.tmdb-result-list {
 			min-height: 220px;
-			max-height: calc(72vh - 66px);
+			max-height: min(58vh, 560px);
 			overflow: auto;
-			padding: 10px 12px 14px;
+			padding: 0 2px;
 			box-sizing: border-box;
 		}
 
 		.tmdb-result-item {
+			width: 100%;
 			display: flex;
+			text-align: left;
 			gap: 14px;
-			padding: 14px 6px;
+			padding: 12px;
 			cursor: pointer;
-			border-bottom: 1px solid var(--border-color);
+			border: 1px solid transparent;
+			border-radius: 8px;
+			background: transparent;
+			color: inherit;
+			font: inherit;
+			transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
 		}
 
 		.tmdb-result-item:hover {
-			background-color: rgba(64, 158, 255, .12);
+			background-color: var(--surface-hover);
+			border-color: color-mix(in srgb, var(--active-color) 20%, transparent);
+			transform: translateY(-1px);
 		}
 
 		.tmdb-poster {
 			width: 62px;
 			height: 92px;
 			flex: 0 0 62px;
-			border-radius: 3px;
+			border-radius: 8px;
 			overflow: hidden;
 			background-color: var(--home-background-color);
 			display: flex;
@@ -1040,6 +1211,7 @@
 		.tmdb-info {
 			min-width: 0;
 			flex: 1;
+			display: block;
 		}
 
 		.tmdb-title {
@@ -1064,17 +1236,50 @@
 		}
 
 		.tmdb-overview {
+			display: -webkit-box;
 			color: var(--text-secondary);
 			line-height: 20px;
-			display: -webkit-box;
 			-webkit-line-clamp: 3;
 			-webkit-box-orient: vertical;
 			overflow: hidden;
 		}
+
+		:deep(.el-button > svg) {
+			width: 15px;
+			height: 15px;
+			stroke-width: 1.8;
+		}
+
+		:deep(.el-button > svg + span) {
+			margin-left: 6px;
+		}
+	}
+
+	:global(.tmdb-search-dialog) {
+		border-radius: 8px;
+		overflow: hidden;
+		background: var(--home-item-background-color);
+		box-shadow: 0 28px 90px rgba(0, 0, 0, .34);
+	}
+
+	:global(.tmdb-search-dialog .el-dialog__header) {
+		padding: 18px 22px 12px;
+		margin-right: 0;
+	}
+
+	:global(.tmdb-search-dialog .el-dialog__body) {
+		padding: 8px 20px 20px;
 	}
 
 	@media (max-width: 1180px) {
 		.media-scraping-page {
+			height: auto;
+			display: block;
+
+			.page-title {
+				margin-bottom: 16px;
+			}
+
 			.workbench {
 				grid-template-columns: minmax(0, 1fr);
 				height: auto;
@@ -1087,6 +1292,17 @@
 			.preview-panel {
 				height: 620px;
 			}
+
+			.task-log-panel {
+				display: block;
+				margin-top: 12px;
+				overflow: visible;
+			}
+
+			.task-table {
+				flex: none;
+				min-height: 260px;
+			}
 		}
 	}
 
@@ -1094,9 +1310,56 @@
 		.media-scraping-page {
 			padding: 12px 10px 20px;
 
+			.page-heading {
+				margin-bottom: 10px;
+			}
+
 			.page-title {
-				margin-bottom: 12px;
+				margin-bottom: 0;
 				font-size: 18px;
+			}
+
+			.mobile-workbench-nav {
+				position: sticky;
+				top: 54px;
+				z-index: 5;
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 4px;
+				margin: 0 0 10px;
+				padding: 4px;
+				border: 1px solid var(--border-color);
+				border-radius: 8px;
+				background: color-mix(in srgb, var(--home-item-background-color) 92%, transparent);
+				box-shadow: 0 8px 24px rgba(15, 23, 42, .08);
+				backdrop-filter: blur(16px);
+			}
+
+			.mobile-workbench-nav button {
+				min-width: 0;
+				height: 38px;
+				border: 0;
+					border-radius: 8px;
+				background: transparent;
+				color: var(--text-muted);
+				font: inherit;
+				font-size: 12px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				cursor: pointer;
+			}
+
+			.mobile-workbench-nav button.active {
+				background: var(--brand-soft);
+				color: var(--active-color);
+			}
+
+			.mobile-workbench-nav svg {
+				width: 15px;
+				height: 15px;
+				flex: none;
 			}
 
 			.workbench {
@@ -1105,14 +1368,18 @@
 
 			.panel {
 				padding: 12px;
+					border-radius: 8px;
+				scroll-margin-top: 108px;
 			}
 
 			.browser-panel {
-				height: 390px;
+				height: min(390px, calc(100dvh - 232px));
+				min-height: 300px;
 			}
 
 			.preview-panel {
-				height: 660px;
+				height: auto;
+				min-height: 660px;
 			}
 
 			.default-engine > div {
@@ -1153,29 +1420,12 @@
 				overflow-x: auto;
 			}
 
-			.tmdb-search-mask {
-				align-items: center;
-				padding: 16px 10px;
-			}
-
-			.tmdb-search-panel {
-				width: 100%;
-				max-height: calc(100dvh - 32px);
-			}
-
 			.tmdb-search-bar {
-				height: 56px;
-				gap: 8px;
-				padding: 0 10px;
-			}
-
-			.tmdb-search-input {
-				font-size: 16px;
+				padding-bottom: 10px;
 			}
 
 			.tmdb-result-list {
-				max-height: calc(100dvh - 90px);
-				padding: 6px 8px 10px;
+				max-height: calc(100dvh - 190px);
 			}
 
 			.tmdb-result-item {
@@ -1187,6 +1437,27 @@
 				width: 54px;
 				height: 80px;
 				flex-basis: 54px;
+			}
+		}
+
+		:global(.tmdb-search-dialog .el-dialog__header) {
+			padding: 16px 16px 10px;
+		}
+
+		:global(.tmdb-search-dialog .el-dialog__body) {
+			padding: 6px 12px 14px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.media-scraping-page {
+			.file-row,
+			.tmdb-result-item {
+				transition: none;
+			}
+
+			.tmdb-result-item:hover {
+				transform: none;
 			}
 		}
 	}

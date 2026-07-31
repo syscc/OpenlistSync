@@ -8,7 +8,7 @@ import menuRefresh from "./components/menuRefresh.vue";
 import { parseSize, parseTime } from "@/utils/utils";
 import { isFileSizeBoundaryValid, isFileSizeRangeValid } from "@/utils/fileSizeFilter";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { CaretRight, Plus, View } from "@element-plus/icons-vue";
+import { CirclePlay, Eye, Pencil, Plus, Power, PowerOff, Trash2 } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useMediaQuery } from "@vueuse/core";
 
@@ -142,7 +142,7 @@ const getJobList = () => {
   loading.value = true;
   jobGetJob(params.value)
     .then((res) => {
-      jobData.value = res.data;
+      jobData.value = res.data || { dataList: [], count: 0 };
     })
     .finally(() => {
       loading.value = false;
@@ -391,14 +391,13 @@ const handleCurrentChange = (val) => {
   <div class="home table-page">
     <div class="top-box">
       <div class="top-box-left">
-        <el-button type="success" :icon="Plus" @click="addShow" size="small">{{ $t("home.newJob") }}</el-button>
+        <el-button type="primary" :icon="Plus" @click="addShow">{{ $t("home.newJob") }}</el-button>
         <el-button
           @click="runAllJob"
-          size="small"
           v-if="jobData.dataList.length > 1"
-          :icon="CaretRight"
+          :icon="CirclePlay"
           :loading="btnLoading"
-          type="primary"
+          plain
         >
           {{ $t("home.runAll") }}
         </el-button>
@@ -466,17 +465,17 @@ const handleCurrentChange = (val) => {
               <div class="form-box-item-label">{{ $t("home.more") }}</div>
               <div class="form-box-item-value action-line">
                 <template v-if="props.row.isCron != 2">
-                  <el-button type="warning" :loading="btnLoading" size="small" v-if="props.row.enable" @click="disableJobShow(props.row, false)">
+                  <el-button :icon="PowerOff" plain :loading="btnLoading" size="small" v-if="props.row.enable" @click="disableJobShow(props.row, false)">
                     {{ $t("common.disable") }}
                   </el-button>
-                  <el-button type="success" :loading="btnLoading" size="small" v-else @click="putJob(props.row, false)">
+                  <el-button :icon="Power" plain :loading="btnLoading" size="small" v-else @click="putJob(props.row, false)">
                     {{ $t("common.enable") }}
                   </el-button>
                 </template>
-                <el-button type="danger" :loading="btnLoading" size="small" @click="disableJobShow(props.row, true)">
+                <el-button type="danger" :icon="Trash2" text :loading="btnLoading" size="small" @click="disableJobShow(props.row, true)">
                   {{ $t("common.delete") }}
                 </el-button>
-                <el-button type="primary" :loading="btnLoading" size="small" @click="editJobShow(props.row)">
+                <el-button :icon="Pencil" plain :loading="btnLoading" size="small" @click="editJobShow(props.row)">
                   {{ $t("common.edit") }}
                 </el-button>
               </div>
@@ -491,7 +490,7 @@ const handleCurrentChange = (val) => {
       </el-table-column>
       <el-table-column prop="enable" :label="$t('home.status')" width="90">
         <template #default="scope">
-          <div :class="`bg-status bg-${scope.row.enable ? '2' : '7'}`">
+          <div :class="`job-status ${scope.row.enable ? 'is-enabled' : 'is-disabled'}`">
             {{ scope.row.enable ? $t("common.enabled") : $t("common.disabled") }}
           </div>
         </template>
@@ -499,23 +498,23 @@ const handleCurrentChange = (val) => {
       <el-table-column prop="srcPath" :label="$t('home.sourcePath')" min-width="120">
         <template #default="scope">
           <div class="path-list">
-            <div class="path-box bg-8">{{ scope.row.srcPath }}</div>
+            <div class="path-box source-path">{{ scope.row.srcPath }}</div>
           </div>
         </template>
       </el-table-column>
       <el-table-column prop="dstPath" :label="$t('home.targetPath')" min-width="180">
         <template #default="scope">
           <div class="path-list">
-            <div class="path-box bg-1" v-for="item in scope.row.dstPath.split(':')" :key="item">{{ item }}</div>
+            <div class="path-box target-path" v-for="item in scope.row.dstPath.split(':')" :key="item">{{ item }}</div>
           </div>
         </template>
       </el-table-column>
       <el-table-column :label="$t('common.operate')" align="center" width="230">
         <template #default="scope">
-          <el-button :icon="CaretRight" type="primary" @click="putJob(scope.row)" :loading="btnLoading" size="small">
+          <el-button :icon="CirclePlay" type="primary" @click="putJob(scope.row)" :loading="btnLoading" size="small">
             {{ $t("home.manualRun") }}
           </el-button>
-          <el-button :icon="View" type="success" @click="detail(scope.row.id)" :loading="btnLoading" size="small">
+          <el-button :icon="Eye" plain @click="detail(scope.row.id)" :loading="btnLoading" size="small">
             {{ $t("home.detail") }}
           </el-button>
         </template>
@@ -629,7 +628,7 @@ const handleCurrentChange = (val) => {
           <el-form-item prop="exclude" :label="$t('home.excludeSyntax')">
             <div class="label-width">
               {{ $t("home.excludeSyntaxTip") }}<br />
-              <span @click="toIgnore" class="to-link">{{ $t("home.excludeGuide") }}</span>
+              <button type="button" @click="toIgnore" class="to-link">{{ $t("home.excludeGuide") }}</button>
             </div>
           </el-form-item>
           <el-form-item prop="exclude" :label="$t('home.excludeRules')">
@@ -681,7 +680,7 @@ const handleCurrentChange = (val) => {
           <template v-else-if="editData.isCron == 1">
             <el-form-item prop="isCron" :label="$t('common.tips')">
               <div class="label-width">
-                <span @click="toCron" class="to-link">{{ $t("home.cronGuide") }}</span>
+                <button type="button" @click="toCron" class="to-link">{{ $t("home.cronGuide") }}</button>
               </div>
             </el-form-item>
             <el-form-item v-for="item in cronList" :key="item.key" :prop="item.key" :label="item.key">
@@ -713,6 +712,17 @@ const handleCurrentChange = (val) => {
 
 <style lang="scss" scoped>
 .home {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  .top-box {
+    flex: 0 0 auto;
+    min-height: 48px;
+    margin-bottom: 12px;
+    padding: 0 2px;
+  }
+
   .top-box-left,
   .action-line {
     display: flex;
@@ -724,6 +734,113 @@ const handleCurrentChange = (val) => {
     display: inline-block;
     margin-right: 6px;
     margin-bottom: 4px;
+  }
+
+  .top-box-title {
+    font-size: 18px;
+    letter-spacing: 0;
+  }
+
+  .job-table {
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 14px);
+    background: var(--surface-panel, var(--home-item-background-color));
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
+
+    :deep(.el-table__header th.el-table__cell) {
+      height: 46px;
+      color: var(--text-secondary);
+      background: var(--surface-inset, color-mix(in srgb, var(--home-background-color) 58%, var(--home-item-background-color)));
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    :deep(.el-table__row > td.el-table__cell) {
+      padding: 11px 0;
+      transition: background-color var(--motion-fast, 160ms) var(--ease-standard, ease);
+    }
+
+    :deep(.el-table__expanded-cell) {
+      padding: 18px 24px;
+      background: var(--surface-inset, var(--home-background-color));
+    }
+
+    :deep(.el-button + .el-button) {
+      margin-left: 6px;
+    }
+  }
+
+  .job-status {
+    position: relative;
+    width: fit-content;
+    min-width: 62px;
+    padding: 4px 9px 4px 22px;
+    border-radius: var(--radius-pill, 999px);
+    box-sizing: border-box;
+    font-size: 12px;
+    font-weight: 650;
+
+    &::before {
+      position: absolute;
+      top: 50%;
+      left: 9px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      transform: translateY(-50%);
+      content: "";
+    }
+  }
+
+  .is-enabled {
+    color: var(--success-color);
+    background: color-mix(in srgb, var(--success-color) 11%, transparent);
+  }
+
+  .is-disabled {
+    color: var(--text-muted);
+    background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  }
+
+  .path-box {
+    padding: 4px 8px;
+    border: 0;
+    border-radius: var(--radius-xs, 7px);
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .source-path {
+    color: var(--accent-purple);
+    background: var(--accent-purple-soft);
+  }
+
+  .target-path {
+    color: var(--active-color);
+    background: color-mix(in srgb, var(--active-color) 9%, transparent);
+  }
+
+  .form-box {
+    gap: 2px 18px;
+  }
+
+  .form-box-item {
+    min-width: 220px;
+    margin: 3px 0 10px;
+  }
+
+  .form-box-item-label {
+    min-width: 84px;
+    font-size: 12px;
+  }
+
+  .page-box {
+    flex: 0 0 auto;
+    margin-top: 12px;
   }
 }
 
@@ -797,9 +914,18 @@ const handleCurrentChange = (val) => {
 }
 
 :global(.job-dialog .to-link) {
+  padding: 0;
   color: var(--active-color);
+  background: transparent;
+  border: 0;
   text-decoration: underline;
+  font: inherit;
   cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--active-color) 50%, transparent);
+    outline-offset: 2px;
+  }
 }
 
 :global(.option-left) {

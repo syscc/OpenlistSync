@@ -1,4 +1,5 @@
 import { h, defineComponent, withDirectives, resolveDirective } from "vue";
+import { usePreferredReducedMotion } from "@vueuse/core";
 
 /** 封装@vueuse/motion动画库中的自定义指令v-motion */
 export default defineComponent({
@@ -8,6 +9,11 @@ export default defineComponent({
       type: Number,
       default: 50,
     },
+  },
+  setup() {
+    return {
+      reducedMotion: usePreferredReducedMotion(),
+    };
   },
   render() {
     const { delay } = this;
@@ -23,16 +29,23 @@ export default defineComponent({
       [
         [
           motion,
-          {
-            initial: { opacity: 0, y: 100 },
-            enter: {
-              opacity: 1,
-              y: 0,
-              transition: {
-                delay,
+          this.reducedMotion === "reduce"
+            ? {
+                initial: { opacity: 1, y: 0 },
+                enter: { opacity: 1, y: 0 },
+              }
+            : {
+                initial: { opacity: 0, y: 12 },
+                enter: {
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    delay,
+                    duration: 240,
+                    ease: [0.22, 1, 0.36, 1],
+                  },
+                },
               },
-            },
-          },
         ],
       ]
     );

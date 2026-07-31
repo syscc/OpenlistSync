@@ -58,7 +58,7 @@ class MainIndex(RequestHandler):
         self.front_dir = front_dir
 
     def get(self):
-        index_path = os.path.join(self.front_dir, 'index.html')
+        index_path = os.path.abspath(os.path.join(self.front_dir, 'index.html'))
         if os.path.exists(index_path):
             self.render(index_path)
         else:
@@ -82,6 +82,8 @@ def make_app(server_cfg, front_dir=None):
         (r'/svr/user', systemController.User),
         (r'/svr/language', systemController.Language),
         (r'/svr/system/config', systemController.Config),
+        (r'/svr/system/proxy/reveal', systemController.ProxyReveal),
+        (r'/svr/system/proxy/test', systemController.ProxyTest),
         (r'/svr/media/scraping', mediaScrapingController.MediaScraping),
         (r'/svr/openlist', jobController.OpenList),
         (r'/svr/job', jobController.Job),

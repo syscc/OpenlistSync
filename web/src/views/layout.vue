@@ -44,6 +44,7 @@ onMounted(() => {
 .app-main {
     width: 100%;
     height: 100vh;
+    height: 100dvh;
     box-sizing: border-box;
     position: relative;
     overflow-y: auto;
@@ -54,44 +55,55 @@ onMounted(() => {
         top: 0;
         left: 0;
         right: 0;
-        height: 50px;
+        height: 58px;
         width: 100%;
         box-sizing: border-box;
-        box-shadow: 0 5px 10px var(--app-header-shadow-color);
+        border-bottom: 1px solid var(--border-color);
+        box-shadow: 0 10px 30px var(--app-header-shadow-color);
 
         background: var(--app-header-background-color);
-        backdrop-filter: blur(4px);
+        backdrop-filter: blur(18px) saturate(150%);
+        -webkit-backdrop-filter: blur(18px) saturate(150%);
     }
 
     .app-left {
         position: fixed;
         left: 0;
-        top: 50px;
+        top: 58px;
         bottom: 0;
-        transition: all .3s ease-in-out;
-        width: 201px;
+        transition: width 220ms cubic-bezier(.2, .8, .2, 1);
+        width: 212px;
         box-sizing: border-box;
         background: var(--app-left-background-color);
     }
 
     .left-collapse {
-        width: 65px;
+        width: 68px;
     }
 
     .app-content {
         width: 100%;
         height: 100%;
-        padding-left: 201px;
-        padding-top: 50px;
-        transition: all .3s ease-in-out;
+        padding-left: 212px;
+        padding-top: 58px;
+        transition: padding-left 220ms cubic-bezier(.2, .8, .2, 1);
         box-sizing: border-box;
     }
 
     .content-collapse {
-        padding-left: 65px;
+        padding-left: 68px;
     }
 
 
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-main {
+        .app-left,
+        .app-content {
+            transition: none;
+        }
+    }
 }
 
 @media (max-width: 768px) {
@@ -103,6 +115,7 @@ onMounted(() => {
 
         .app-header {
             z-index: 20;
+            height: 54px;
         }
 
         .app-left,
@@ -122,6 +135,7 @@ onMounted(() => {
             min-height: 100vh;
             min-height: 100dvh;
             padding-left: 0;
+            padding-top: 54px;
             padding-bottom: calc(64px + env(safe-area-inset-bottom));
         }
     }

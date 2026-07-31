@@ -80,29 +80,17 @@ const router = createRouter({
     },
     {
       path: "/globalExclude",
-      component: layout,
-      children: [
-        {
-          path: "",
-          component: () => import("@/views/pages/globalExclude/index.vue"),
-          meta: {
-            leftIndex: "/globalExclude",
-          },
-        },
-      ],
+      redirect: {
+        path: "/setting",
+        query: { tab: "globalExclude" },
+      },
     },
     {
       path: "/notify",
-      component: layout,
-      children: [
-        {
-          path: "",
-          component: () => import("@/views/pages/notify/index.vue"),
-          meta: {
-            leftIndex: "/notify",
-          },
-        },
-      ],
+      redirect: {
+        path: "/setting",
+        query: { tab: "notifications" },
+      },
     },
     {
       path: "/setting",

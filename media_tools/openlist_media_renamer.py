@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Rename media files in OpenList with movie/TV naming rules.
 
-The script intentionally uses only Python standard library modules so it can run
-as a standalone source file:
+The script uses requests for TMDb access and PySocks when a SOCKS5 proxy is
+enabled. It can run as a standalone source file:
 
     python3 openlist_media_renamer.py --env-file .evn
 
@@ -12,6 +12,7 @@ Set DRY_RUN=false in the env file, or pass --apply, to call OpenList write APIs.
 from __future__ import annotations
 
 import argparse
+import base64
 import contextlib
 import difflib
 import io
@@ -29,8 +30,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Callable
 
+import requests
+
 
 DEFAULT_RENAME_THREADS = 2
+DEFAULT_TMDB_API_URL = "https://api.themoviedb.org"
 LIBRARY_ROOT_NAMES = {
     "movie",
     "movies",
@@ -374,6 +378,136 @@ class OpenListClient:
         )
 
 
+def normalize_tmdb_api_url(value: Any) -> str:
+    raw = str(value or DEFAULT_TMDB_API_URL).strip()
+    if any(char.isspace() for char in raw):
+        raise TMDbError("invalid TMDb API URL")
+    if "://" not in raw:
+        raw = "https://" + raw
+    try:
+        parts = urllib.parse.urlsplit(raw)
+        hostname = parts.hostname
+        parts.port
+    except ValueError:
+        raise TMDbError("invalid TMDb API URL") from None
+    if (
+        parts.scheme.lower() not in {"http", "https"}
+        or not parts.netloc
+        or not hostname
+        or parts.username is not None
+        or parts.password is not None
+        or parts.query
+        or parts.fragment
+    ):
+        raise TMDbError("invalid TMDb API URL")
+    path = parts.path.rstrip("/")
+    if path.endswith("/3"):
+        path = path[:-2].rstrip("/")
+    return urllib.parse.urlunsplit((parts.scheme.lower(), parts.netloc, path, "", ""))
+
+
+def _tmdb_proxy_url(proxy: dict[str, Any] | str | None) -> str:
+    if isinstance(proxy, dict) and 'url' in proxy:
+        raw = str(proxy.get('url') or '').strip()
+    elif isinstance(proxy, str):
+        raw = proxy.strip()
+    else:
+        proxy = proxy if isinstance(proxy, dict) else {}
+        if not proxy.get("enabled"):
+            return ""
+        proxy_type = str(proxy.get("type") or "http").strip().lower()
+        scheme = "socks" if proxy_type.startswith("socks") else "http"
+        host = str(proxy.get("host") or "").strip()
+        if host.startswith("[") and host.endswith("]"):
+            host = host[1:-1]
+        if ":" in host:
+            host = f"[{host}]"
+        username = str(proxy.get("username") or "")
+        password = str(proxy.get("password") or "")
+        auth = urllib.parse.quote(username, safe="")
+        if password:
+            auth += ":" + urllib.parse.quote(password, safe="")
+        if username or password:
+            auth += "@"
+        raw = f"{scheme}://{auth}{host}:{int(proxy.get('port'))}"
+
+    if not raw:
+        return ""
+    try:
+        parts = urllib.parse.urlsplit(raw)
+        hostname = parts.hostname
+        port = parts.port
+    except ValueError:
+        raise TMDbError("invalid proxy server URL") from None
+    scheme = parts.scheme.lower()
+    if (
+        scheme not in {"http", "socks", "socks5", "socks5h"}
+        or not parts.netloc
+        or not hostname
+        or port is None
+        or parts.path not in {"", "/"}
+        or parts.query
+        or parts.fragment
+    ):
+        raise TMDbError("invalid proxy server URL")
+    request_scheme = "socks5h" if scheme.startswith("socks") else "http"
+    return urllib.parse.urlunsplit((request_scheme, parts.netloc, "", "", ""))
+
+
+# PySocks drops empty usernames; keep the value truthy while encoding zero bytes.
+class _TruthyEmptyBytes(bytes):
+    def __bool__(self) -> bool:
+        return True
+
+
+class _EmptySocksUsername(str):
+    def __bool__(self) -> bool:
+        return True
+
+    def encode(self, *args: Any, **kwargs: Any) -> bytes:
+        return _TruthyEmptyBytes()
+
+
+class _PasswordOnlyProxyAdapter(requests.adapters.HTTPAdapter):
+    """Preserve an empty proxy username for password-only authentication."""
+
+    def proxy_headers(self, proxy: str) -> dict[str, str]:
+        headers = super().proxy_headers(proxy)
+        parts = urllib.parse.urlsplit(proxy)
+        if parts.scheme.lower() == "http" and parts.username == "" and parts.password:
+            credentials = f":{urllib.parse.unquote(parts.password)}".encode("latin1")
+            token = base64.b64encode(credentials).decode("ascii")
+            headers["Proxy-Authorization"] = f"Basic {token}"
+        return headers
+
+    def proxy_manager_for(self, proxy: str, **proxy_kwargs: Any):
+        if proxy in self.proxy_manager:
+            return self.proxy_manager[proxy]
+        if not proxy.lower().startswith("socks"):
+            return super().proxy_manager_for(proxy, **proxy_kwargs)
+
+        username, password = requests.utils.get_auth_from_url(proxy)
+        if username == "" and password:
+            username = _EmptySocksUsername()
+        try:
+            from urllib3.contrib.socks import SOCKSProxyManager
+        except ImportError as exc:
+            raise requests.exceptions.InvalidSchema(
+                "Missing dependencies for SOCKS support."
+            ) from exc
+        manager = SOCKSProxyManager(
+            proxy,
+            username=username,
+            password=password,
+            num_pools=self._pool_connections,
+            maxsize=self._pool_maxsize,
+            block=self._pool_block,
+            **proxy_kwargs,
+        )
+        self.proxy_manager[proxy] = manager
+        return manager
+
+
 class TMDbClient:
     def __init__(
         self,
@@ -382,12 +516,28 @@ class TMDbClient:
         language: str = "zh-CN",
         include_adult: bool = False,
         timeout: int = 30,
+        api_base_url: str = DEFAULT_TMDB_API_URL,
+        proxy: dict[str, Any] | str | None = None,
+        session: requests.Session | None = None,
     ) -> None:
         self.bearer_token = bearer_token
         self.api_key = api_key
         self.language = language
         self.include_adult = include_adult
         self.timeout = timeout
+        self.api_base_url = normalize_tmdb_api_url(api_base_url)
+        self.proxy_url = _tmdb_proxy_url(proxy)
+        proxy_parts = urllib.parse.urlsplit(self.proxy_url)
+        self.proxy_password = urllib.parse.unquote(proxy_parts.password or "")
+        self.proxy_password_encoded = proxy_parts.password or ""
+        self.proxies = ({"http": self.proxy_url, "https": self.proxy_url}
+                        if self.proxy_url else {})
+        self.session = session or requests.Session()
+        self.session.trust_env = False
+        if proxy_parts.username == "" and proxy_parts.password:
+            adapter = _PasswordOnlyProxyAdapter()
+            self.session.mount("http://", adapter)
+            self.session.mount("https://", adapter)
         self.cache: dict[tuple[str, str, str], tuple[str, str]] = {}
 
     def enabled(self) -> bool:
@@ -400,29 +550,59 @@ class TMDbClient:
         params.setdefault("language", self.language)
         if self.api_key:
             params["api_key"] = self.api_key
-        query = urllib.parse.urlencode(params)
-        url = "https://api.themoviedb.org/3/" + api_path.lstrip("/")
-        if query:
-            url += "?" + query
+        url = self.api_base_url + "/3/" + api_path.lstrip("/")
         headers = {"Accept": "application/json"}
         if self.bearer_token:
             headers["Authorization"] = f"Bearer {self.bearer_token}"
-        req = urllib.request.Request(url, headers=headers, method="GET")
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                raw = resp.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            raw = exc.read().decode("utf-8", errors="replace")
-            raise TMDbError(f"HTTP {exc.code} from TMDb {api_path}: {raw}") from exc
-        except urllib.error.URLError as exc:
-            raise TMDbError(f"TMDb request failed for {api_path}: {exc}") from exc
+            response = self.session.get(
+                url,
+                params=params,
+                headers=headers,
+                timeout=self.timeout,
+                proxies=self.proxies,
+            )
+        except requests.RequestException as exc:
+            error = self._redact_error(exc)
+            raise TMDbError(f"TMDb request failed for {api_path}: {error}") from None
         try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise TMDbError(f"invalid JSON from TMDb {api_path}: {raw[:200]}") from exc
+            raw = response.text
+            if response.status_code < 200 or response.status_code >= 300:
+                error = self._redact_error(raw[:500])
+                raise TMDbError(f"HTTP {response.status_code} from TMDb {api_path}: {error}")
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                error = self._redact_error(raw[:200])
+                raise TMDbError(f"invalid JSON from TMDb {api_path}: {error}") from None
+        finally:
+            response.close()
         if not isinstance(data, dict):
             raise TMDbError(f"unexpected TMDb response for {api_path}")
         return data
+
+    def _redact_error(self, value: Any) -> str:
+        text = str(value)
+        secrets = [
+            self.api_key,
+            self.bearer_token,
+            self.proxy_password,
+            self.proxy_password_encoded,
+            self.proxy_url,
+        ]
+        for secret in secrets:
+            if not secret:
+                continue
+            variants = {
+                str(secret),
+                urllib.parse.quote(str(secret), safe=""),
+                urllib.parse.quote_plus(str(secret), safe=""),
+            }
+            for variant in variants:
+                text = text.replace(variant, "<redacted>")
+        text = re.sub(r"(?i)(api_key=)[^&\s]+", r"\1<redacted>", text)
+        text = re.sub(r"(://)[^/@\s]+@", r"\1<redacted>@", text)
+        return text
 
     def resolve(self, media_type: str, parsed: "MediaInfo") -> tuple[str, str]:
         if not self.enabled():
@@ -1119,6 +1299,7 @@ def load_config(path: str) -> dict[str, Any]:
         "tmdb": {
             "bearer_token": env.get("TMDB_BEARER_TOKEN", ""),
             "api_key": env.get("TMDB_API_KEY", ""),
+            "api_base_url": env.get("TMDB_API_URL", DEFAULT_TMDB_API_URL),
             "language": env.get("TMDB_LANGUAGE", "zh-CN"),
             "include_adult": env_bool(env, "TMDB_INCLUDE_ADULT", False),
             "required": env_bool(env, "TMDB_REQUIRED", True),
@@ -1210,9 +1391,11 @@ def build_tmdb_client(config: dict[str, Any]) -> TMDbClient:
     return TMDbClient(
         bearer_token=tmdb.get("bearer_token", ""),
         api_key=tmdb.get("api_key", ""),
+        api_base_url=tmdb.get("api_base_url", DEFAULT_TMDB_API_URL),
         language=tmdb.get("language", "zh-CN"),
         include_adult=bool(tmdb.get("include_adult", False)),
         timeout=int(tmdb.get("timeout", 30)),
+        proxy=tmdb.get("proxy"),
     )
 
 

@@ -28,18 +28,11 @@
 
 ---
 
-本程序修改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync) V0.4.0，当前版本为 `v0.3.0`。
+本程序修改自开源项目 [TaoSync](https://github.com/dr34m-cn/taosync) V0.4.0。
 
 在原有的项目基础上主要改动，新增通过 [MoviePilot](https://github.com/jxxghp/MoviePilot) 入库通知自动同步下载的影视文件到 [OpenList](https://github.com/OpenListTeam/OpenList)；并刷新，利用 [OpenList](https://github.com/OpenListTeam/OpenList) 的 `Strm` 驱动自动更新 Strm 文件自动入库。
 
 **如果好用，请 Star！非常感谢！**  [GitHub](https://github.com/syscc/OpenlistSync)  [DockerHub](https://hub.docker.com/r/syscc/openlistsync)
-
-## v0.3.0 升级说明
-
-- 支持从 `v0.2.1` 直接升级。首次启动会将数据库结构迁移到 `260729`，保留现有 OpenList 引擎、同步作业、全局排除项、通知配置以及媒体刮削配置和任务记录。
-- 本版同步 TaoSync `v0.4.0` 的 Vue 3 前端、国际化、文件大小过滤、通知渠道与多平台构建支持，并继续使用现有 OpenList 字段和接口，不会切换回 AList 配置。
-- 升级前请结束正在运行的同步和重命名任务，并备份整个 `data/` 目录。源码部署需要重新安装后端与 `web/` 前端依赖；升级后若仍显示旧界面，请强制刷新浏览器缓存。
-- 数据库完成迁移后不建议直接使用旧版本继续写入；需要回退时应同时恢复升级前备份的 `data/` 目录。
 
 <details>
 
@@ -145,6 +138,7 @@
 * Linux 独立程序提供 amd64、arm64、arm32 的 StaticX 构建；Android 客户端提供运行日志与网页双视图，并允许局域网访问后端
 * 支持Docker，下载即用
 * 前端使用 Vue 3、Vite、Element Plus 与 Pinia，支持亮色/暗色主题、简体中文/English 切换和独立移动端交互；后端响应与任务通知跟随所选语言
+* 一级导航聚焦作业管理、媒体名字刮削、引擎管理和系统设置；全局排除与通知渠道统一在系统设置中维护
 * 干净卸载，不用的时候删掉即可，无任何残留或依赖，不影响系统里其他程序
 * 登录密码不可逆散列保存，支持重置密码，也可在首次创建数据库时通过配置文件或环境变量设置初始管理员密码
 * 核心同步功能可在仅连接 OpenList 的环境运行；媒体刮削、通知等外部集成功能仅在配置并使用时访问 TMDb 或对应通知服务
@@ -152,7 +146,8 @@
 * 完善的日志，所有错误都会被记录
 * 引擎管理，可以自由增删改查`OpenList/AList`
 * 作业管理，可以新增/删除/启用/禁用/编辑/手动执行作业
-* 媒体名字刮削，可以复用已配置的 OpenList 引擎，统一配置默认引擎、TMDb、命名模板与改名线程，按 MoviePilot 风格浏览目录、搜索/填写 TMDb ID、预览命名并后台执行媒体目录/文件命名整理；支持根目录最后重命名、强制刷新缓存、任务进度、终止任务、手动执行历史任务、保留重命名日志和任务结果通知
+* 媒体名字刮削，可以复用已配置的 OpenList 引擎，统一配置默认引擎、TMDb API 服务器、命名模板与改名线程，按 MoviePilot 风格浏览目录、搜索/填写 TMDb ID、预览命名并后台执行媒体目录/文件命名整理；支持根目录最后重命名、强制刷新缓存、任务进度、终止任务、手动执行历史任务、保留重命名日志和任务结果通知
+* 系统设置支持配置通用代理服务器，自动识别 HTTP 或 SOCKS 协议；当前用于后端 TMDb API 请求，不影响 OpenList、同步任务和通知请求
 * 支持排除项规则，可以排除指定目录或文件不同步
 * 支持作业级文件大小过滤，可分别设置最小值和最大值；等于边界的文件仍参与同步
 * 仅新增、全同步、移动三种模式
@@ -168,7 +163,7 @@
 刮削配置包含：
 
 - 默认打开的 OpenList 引擎；
-- TMDb API Key 或 Bearer Token、语言、成人内容开关和超时时间；
+- TMDb API Key 或 Bearer Token、API 服务器、语言、成人内容开关和超时时间；
 - 电影/电视剧命名模板、媒体扩展名、自定义词、制作组、自定义标签；
 - 改名线程数、是否允许覆盖、是否刷新目录缓存、重命名日志保留数量。
 
@@ -187,6 +182,8 @@
 - `S00`、`S01` 与 `Season 0`、`Season 1` 等目录会识别为季目录；同父级季目录调整会优先重命名目录，并在文件移动后清理空的季目录。
 - OpenList 批量移动超时时会刷新源/目标目录做二次核验，实际已完成的文件会补成功日志。
 - 任务完成、部分失败、失败或中止后，会复用通知配置发送媒体刮削任务结果。
+
+TMDb API 服务器默认为 `https://api.themoviedb.org`，可选择备用的 `https://api.tmdb.org`，也可输入自定义 HTTP/HTTPS 地址。如果所在网络需要代理，可在 `系统设置 -> 代理服务器` 中填写 `http://host:port` 或 `socks://host:port`；也支持 `user:password` 认证以及 `:password` 形式的仅密码认证。SOCKS5 仅密码认证使用零长度用户名兼容形式，需要代理服务器支持。代理地址保存后默认隐藏认证信息，点击输入框右侧的显示按钮可按需查看完整连接串。代理设置页可使用固定地址 `http://www.google.com/generate_204` 测试代理延迟，当前代理用于后端 TMDb API 请求。
 
 ## 使用方法
 
@@ -352,7 +349,7 @@ OpenlistSync/
 │   ├── mediaScrapingMapper.py      # 媒体名字刮削任务、执行日志与明细数据
 │   ├── notifyMapper.py             # 通知配置数据
 │   ├── openlistMapper.py           # OpenList 引擎数据
-│   ├── systemConfigMapper.py       # 系统配置数据，如全局排除项
+│   ├── systemConfigMapper.py       # 系统配置数据，如全局排除项和代理服务器
 │   └── userMapper.py               # 用户数据
 ├── media_tools/                    # 媒体整理核心工具
 │   └── openlist_media_renamer.py   # OpenList 媒体识别、TMDb 查询、命名预览与重命名执行
@@ -371,7 +368,7 @@ OpenlistSync/
 │   │   ├── router/                 # 前端路由
 │   │   ├── store/                  # Pinia 状态
 │   │   ├── utils/                  # 前端工具与枚举
-│   │   └── views/                  # 页面与组件，含作业管理、媒体名字刮削、全局排除项、系统设置等
+│   │   └── views/                  # 页面与组件，含作业管理、媒体名字刮削和集中式系统设置等
 │   ├── package.json                # 前端依赖与脚本
 │   └── vite.config.js              # Vite 开发服务与代理配置
 ├── tests/                          # 后端迁移、配置、同步过滤与通知测试
@@ -392,7 +389,9 @@ OpenlistSync/
 - `GET/POST/PUT/DELETE /svr/job` 作业管理（列表、详情、手动执行、启用/禁用、中止、删除）
 - `GET/POST/PUT/DELETE /svr/notify` 通知配置（列表、增删改、测试）
 - `GET/POST /svr/language` 后端默认语言读取与修改
-- `GET/POST /svr/system/config` 系统配置与全局排除项
+- `GET/POST /svr/system/config` 系统配置、全局排除项与通用代理服务器
+- `GET /svr/system/proxy/reveal` 按需读取已保存的完整代理连接串（需要登录，禁止缓存）
+- `POST /svr/system/proxy/test` 使用固定 Google 204 地址测试代理延迟
 - `GET/POST/PUT /svr/media/scraping` 媒体名字刮削（配置、浏览 OpenList 路径、TMDb 搜索、预览命名、后台执行、任务列表、任务详情、终止与手动执行）
 - `POST /webhook` Webhook 触发（标题解析、自动建作业与刷新）。支持参数 `apikey`（URL参数或Body参数），若服务端配置了 `WEBHOOK_APIKEY` 则必须提供且匹配。
 

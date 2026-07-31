@@ -7,6 +7,7 @@ import { parseSize, parseTime } from "@/utils/utils";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { useMediaQuery } from "@vueuse/core";
+import { CircleHelp } from "@lucide/vue";
 
 const props = defineProps({
   jobId: {
@@ -247,7 +248,7 @@ watch(isMobile, () => {
                   :percentage="Number(current.allProgress.toFixed(4))"
                 />
                 <el-tooltip v-if="!current.scanFinish" effect="dark" :content="$t('current.unreliableProgress')" placement="top-end">
-                  <el-icon class="hint"><QuestionFilled /></el-icon>
+                  <CircleHelp class="hint" :size="16" />
                 </el-tooltip>
               </template>
             </div>
@@ -267,7 +268,7 @@ watch(isMobile, () => {
               <span v-else>
                 {{ parseSize(current.speedAvg) }}/s
                 <el-tooltip effect="dark" placement="top-end" :content="$t('current.speedTip')">
-                  <el-icon class="hint"><QuestionFilled /></el-icon>
+                  <CircleHelp class="hint" :size="16" />
                 </el-tooltip>
               </span>
             </div>
@@ -283,7 +284,7 @@ watch(isMobile, () => {
               {{ $t("current.remaining") }}:
               {{ current.firstSync === null ? "--" : current.remainTimeText }}
               <el-tooltip effect="dark" placement="top-end" :content="$t('current.timeTip')">
-                <el-icon class="hint"><QuestionFilled /></el-icon>
+                <CircleHelp class="hint" :size="16" />
               </el-tooltip>
             </div>
             <div class="metric">{{ $t("current.startAt") }}: {{ parseTime(current.createTime) }}</div>
@@ -293,7 +294,7 @@ watch(isMobile, () => {
               <span v-else>
                 {{ parseTime(current.createTime + current.duration + current.remainTime) }}
                 <el-tooltip effect="dark" placement="top-end" :content="$t('current.timeTip')">
-                  <el-icon class="hint"><QuestionFilled /></el-icon>
+                  <CircleHelp class="hint" :size="16" />
                 </el-tooltip>
               </span>
             </div>
@@ -307,22 +308,22 @@ watch(isMobile, () => {
         <div class="content-none-data" v-if="current.firstSync === null">{{ $t("current.noFilesYet") }}</div>
         <taskCurrentEcharts v-else class="current-echart-box" :taskCurrent="current" />
         <div class="current-box-task">
-          <div class="current-box-task-left">
-            <div @click="changeTaskCu(0)" :class="`task-left-item${cuTaskSelect == 0 ? ' is-current' : ''}`">
+          <div class="current-box-task-left" role="group" :aria-label="$t('home.status')">
+            <button type="button" :aria-pressed="cuTaskSelect == 0" @click="changeTaskCu(0)" :class="`task-left-item${cuTaskSelect == 0 ? ' is-current' : ''}`">
               {{ $t("current.wait") }}
-            </div>
-            <div @click="changeTaskCu(1)" :class="`task-left-item${cuTaskSelect == 1 ? ' is-current' : ''}`">
+            </button>
+            <button type="button" :aria-pressed="cuTaskSelect == 1" @click="changeTaskCu(1)" :class="`task-left-item${cuTaskSelect == 1 ? ' is-current' : ''}`">
               {{ $t("current.running") }}
-            </div>
-            <div @click="changeTaskCu(2)" :class="`task-left-item${cuTaskSelect == 2 ? ' is-current' : ''}`">
+            </button>
+            <button type="button" :aria-pressed="cuTaskSelect == 2" @click="changeTaskCu(2)" :class="`task-left-item${cuTaskSelect == 2 ? ' is-current' : ''}`">
               {{ $t("current.success") }}
-            </div>
-            <div @click="changeTaskCu(7)" :class="`task-left-item${cuTaskSelect == 7 ? ' is-current' : ''}`">
+            </button>
+            <button type="button" :aria-pressed="cuTaskSelect == 7" @click="changeTaskCu(7)" :class="`task-left-item${cuTaskSelect == 7 ? ' is-current' : ''}`">
               {{ $t("current.fail") }}
-            </div>
-            <div @click="changeTaskCu(-1)" :class="`task-left-item${cuTaskSelect == -1 ? ' is-current' : ''}`">
+            </button>
+            <button type="button" :aria-pressed="cuTaskSelect == -1" @click="changeTaskCu(-1)" :class="`task-left-item${cuTaskSelect == -1 ? ' is-current' : ''}`">
               {{ $t("current.other") }}
-            </div>
+            </button>
           </div>
           <taskDetailTable class="current-box-task-right" :taskItemData="toTable" @pageChange="pageChange" />
         </div>
@@ -404,14 +405,22 @@ watch(isMobile, () => {
             margin: 14px 0;
             padding: 3px 8px 3px 0;
             color: var(--text-muted);
+            background: transparent;
+            border: 0;
             text-align: right;
             box-sizing: border-box;
+            font: inherit;
+
+            &:focus-visible {
+              outline: 2px solid color-mix(in srgb, var(--active-color) 50%, transparent);
+              outline-offset: -2px;
+            }
           }
 
           .is-current {
             color: var(--active-color);
             border-right: 3px solid var(--active-color);
-            background-color: rgba(37, 99, 235, 0.12);
+            background-color: var(--brand-soft);
           }
         }
 

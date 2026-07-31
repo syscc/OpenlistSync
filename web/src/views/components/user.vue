@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
+import { ChevronDown, KeyRound, LogOut, UserRound } from "@lucide/vue";
 
 const appStore = useAppStore();
 const router = useRouter();
@@ -98,19 +99,21 @@ const submit = () => {
 <template>
   <div class="header-user-box">
     <el-dropdown v-if="$store.user" trigger="click">
-      <div class="header-user">
-        <el-icon>
-          <Avatar />
-        </el-icon>
+      <button class="header-user" type="button" :aria-label="$store.user.userName">
+        <UserRound :size="18" :stroke-width="1.75" aria-hidden="true" />
         <span class="username">{{ $store.user.userName }}</span>
-        <el-icon>
-          <ArrowDown />
-        </el-icon>
-      </div>
+        <ChevronDown class="chevron" :size="16" :stroke-width="1.75" aria-hidden="true" />
+      </button>
       <template #dropdown>
         <el-dropdown-menu>
-          <el-dropdown-item @click="showPut">{{ $t("header.setPwd") }}</el-dropdown-item>
-          <el-dropdown-item @click="doLogout">{{ $t("header.logout") }}</el-dropdown-item>
+          <el-dropdown-item @click="showPut">
+            <KeyRound class="dropdown-icon" :size="16" :stroke-width="1.75" aria-hidden="true" />
+            {{ $t("header.setPwd") }}
+          </el-dropdown-item>
+          <el-dropdown-item @click="doLogout">
+            <LogOut class="dropdown-icon" :size="16" :stroke-width="1.75" aria-hidden="true" />
+            {{ $t("header.logout") }}
+          </el-dropdown-item>
         </el-dropdown-menu>
       </template>
     </el-dropdown>
@@ -141,27 +144,66 @@ const submit = () => {
   align-items: center;
 
   .header-user {
+    min-height: 36px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 10px;
     display: flex;
     align-items: center;
+    color: var(--text-secondary);
+    background: transparent;
     cursor: pointer;
+    transition: background-color 160ms ease, color 160ms ease;
+
+    &:hover {
+      color: var(--text-primary);
+      background-color: var(--surface-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--active-color);
+      outline-offset: 2px;
+    }
 
     .username {
-      margin: 0 4px;
+      margin: 0 7px;
       max-width: 160px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+
+    .chevron {
+      opacity: 0.72;
+    }
   }
+}
+
+.dropdown-icon {
+  margin-right: 8px;
 }
 
 @media (max-width: 768px) {
   .header-user-box {
     .header-user {
+      width: 36px;
+      padding: 0;
+      justify-content: center;
+
       .username {
         display: none;
       }
+
+      .chevron {
+        display: none;
+      }
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-user-box .header-user {
+    transition: none;
   }
 }
 </style>

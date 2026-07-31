@@ -2,9 +2,9 @@
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { Back, Delete, View } from "@element-plus/icons-vue";
+import { ArrowLeft, CirclePlay, Eye, Trash2 } from "@lucide/vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { jobDeleteTask, jobGetTask } from "@/api/job";
+import { jobDeleteTask, jobGetTask, jobPut } from "@/api/job";
 import taskStatus from "@/utils/taskStatus";
 import { parseTime } from "@/utils/utils";
 import menuRefresh from "./components/menuRefresh.vue";
@@ -26,6 +26,7 @@ const params = ref({
 });
 const loading = ref(false);
 const btnLoading = ref(false);
+const runLoading = ref(false);
 const currentHeight = ref(0);
 
 const getTaskList = () => {
@@ -33,7 +34,7 @@ const getTaskList = () => {
   loading.value = true;
   jobGetTask(params.value)
     .then((res) => {
-      taskData.value = res.data;
+      taskData.value = res.data || { dataList: [], count: 0 };
     })
     .finally(() => {
       loading.value = false;
@@ -79,6 +80,25 @@ const detail = (taskId) => {
 
 const goback = () => router.go(-1);
 
+const runJob = () => {
+  if (params.value.id == null || runLoading.value) return;
+  runLoading.value = true;
+  jobPut({
+    id: params.value.id,
+    pause: null,
+  })
+    .then((res) => {
+      ElMessage({
+        message: res.msg,
+        type: "success",
+      });
+      getTaskList();
+    })
+    .finally(() => {
+      runLoading.value = false;
+    });
+};
+
 const handleCurrentChange = (value) => {
   params.value.pageNum = value;
   getTaskList();
@@ -93,7 +113,12 @@ const currentChange = (value) => {
 <template>
   <div class="mobile-task-page">
     <div class="mobile-page-header">
-      <el-button :icon="Back" circle @click="goback" :aria-label="$t('common.back')" />
+      <div class="header-actions">
+        <el-button :icon="ArrowLeft" circle @click="goback" :aria-label="$t('common.back')" />
+        <el-button type="primary" :icon="CirclePlay" size="small" :loading="runLoading" @click="runJob">
+          {{ $t("home.manualRun") }}
+        </el-button>
+      </div>
       <div class="header-copy">
         <h1>{{ $t("task.jobDetail") }}</h1>
         <span>{{ $t("task.mobileTaskCount", { count: taskData.count }) }}</span>
@@ -159,14 +184,14 @@ const currentChange = (value) => {
         <div class="task-actions">
           <el-button
             type="danger"
-            :icon="Delete"
+            :icon="Trash2"
             :loading="btnLoading"
             :disabled="item.status == 1"
             @click="delTask(item.id)"
           >
             {{ item.status == 1 ? $t("task.deleteUnavailable") : $t("common.delete") }}
           </el-button>
-          <el-button v-if="item.allNum != 0" type="primary" :icon="View" :loading="btnLoading" @click="detail(item.id)">
+          <el-button v-if="item.allNum != 0" plain :icon="Eye" :loading="btnLoading" @click="detail(item.id)">
             {{ $t("home.detail") }}
           </el-button>
         </div>
@@ -198,6 +223,16 @@ const currentChange = (value) => {
     align-items: center;
     gap: 10px;
     margin-bottom: 14px;
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      :deep(.el-button + .el-button) {
+        margin-left: 0;
+      }
+    }
 
     .header-copy {
       min-width: 0;
@@ -257,7 +292,7 @@ const currentChange = (value) => {
   }
 
   .total {
-    --metric-color: #7048e8;
+    --metric-color: var(--accent-purple);
   }
 
   .success {
@@ -292,8 +327,9 @@ const currentChange = (value) => {
     margin-bottom: 12px;
     padding: 14px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--home-item-background-color);
+    border-radius: var(--radius-md, 14px);
+    background: var(--surface-panel, var(--home-item-background-color));
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
 
     .task-card-header {
       display: flex;
@@ -371,7 +407,7 @@ const currentChange = (value) => {
     }
 
     .progress-metric.total {
-      background: rgba(112, 72, 232, 0.12);
+      background: var(--accent-purple-soft);
     }
 
     .progress-metric.success {

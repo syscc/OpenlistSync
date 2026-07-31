@@ -39,9 +39,18 @@ network:
   unknown: 系统未知错误，请反馈给管理员
 login:
   title: 密码登录
+  eyebrow: MEDIA OPERATIONS
+  headline: 让每一次同步，都清晰可见
+  description: 连接媒体目录、同步任务与命名流程，在一个安静而精确的工作台中完成管理。
+  featureSync: 路径同步
+  featureRename: 智能命名
+  featureObserve: 状态可观测
+  welcome: 欢迎回来
+  subtitle: 登录后继续管理你的媒体工作流
   loginBtn: 登录
   userName: 请输入用户名
   userNameLabel: 用户名
+  passwdLabel: 密码
   userNameRule: 请输入用户名
   passwd: 请输入密码
   passwdRule: 请输入密码
@@ -77,6 +86,8 @@ menu:
   engine: 引擎管理
   notify: 通知配置
   setting: 系统设置
+  expand: 展开侧边栏
+  collapse: 收起侧边栏
 home:
   jobManagement: 作业管理
   mobileJobCount: 共 {count} 个作业
@@ -252,6 +263,9 @@ engine:
 engineScraping:
   defaultEngine: 默认引擎
   defaultEnginePlaceholder: 选择默认打开的 OpenList 引擎
+  tmdbApiServer: API 服务器
+  tmdbApiServerPlaceholder: 选择或输入完整的 HTTP(S) 地址
+  tmdbApiServerTip: 可直接输入自定义 HTTP(S) 地址并按回车确认
   language: 语言
   matchOptions: 匹配选项
   tmdbRequired: 必须配置 TMDb
@@ -442,6 +456,7 @@ notify:
     lark: Lark群机器人
 refresh:
   auto: 自动刷新
+  manual: 立即刷新
 theme:
   toggle: 切换明暗主题
 pathSelect:
@@ -449,6 +464,39 @@ pathSelect:
   selectFirst: 请先选择路径
 setting:
   title: 系统设置
+  subtitle: 管理账户、网络、规则、通知与项目运行信息
+  accountSecurity: 账户与安全
+  proxyServer: 代理服务器
+  globalExclude: 全局排除
+  notifications: 通知渠道
+  about: 关于项目
+  accountDescription: 管理当前账户信息与访问密码
+  securityTitle: 更新访问密码
+  securityDescription: 定期更新密码可降低未授权访问风险
+  proxyServerTitle: 代理服务器
+  proxyServerDescription: 配置 HTTP 或 SOCKS 代理，协议根据地址自动识别
+  proxyServerScope: 此配置供支持代理的网络功能共用；当前已用于 TMDb API 请求。
+  proxyEnabled: 启用代理
+  proxyUrl: 代理地址
+  proxyUrlPlaceholder: "http://user:password{'@'}host:port"
+  proxyUrlRequired: 启用代理时请输入代理地址
+  proxyUrlInvalid: 请输入有效的 HTTP 或 SOCKS 代理地址
+  proxyUrlExamples: "支持 http://host:port、http://user:password{'@'}host:port、socks://:password{'@'}host:port；特殊字符请使用 URL 编码"
+  proxyCredentialsStored: 已保存认证信息；地址未修改时将保持不变
+  proxyCredentialsReplace: 修改地址时请重新填写完整认证信息
+  proxyClearCredentials: 清除已保存的认证信息
+  proxyCancelClearCredentials: 取消清除认证信息
+  proxyCredentialsWillClear: 保存后将清除用户名和密码
+  proxyShowCredentials: 显示完整连接串
+  proxyHideCredentials: 隐藏完整连接串
+  proxyTest: 测试延迟
+  proxyTestTarget: "测试地址：http://www.google.com/generate_204"
+  proxyTestUrlRequired: 测试前请输入代理地址
+  proxyTestResult: "{latency} ms · HTTP {status}"
+  saveProxy: 保存代理设置
+  aboutDescription: 一个专注于目录同步与媒体命名的轻量工作台
+  projectSource: 查看项目源码
+  issueTracker: 提交问题反馈
   username: 用户名
   version: OpenListSync 版本：__version_placeholder__
   github: 项目地址（GitHub）

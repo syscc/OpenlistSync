@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { CaretRight, CircleCheck, CircleClose, Delete, Edit, Plus, View } from "@element-plus/icons-vue";
+import { CircleCheck, CirclePlay, CircleX, Eye, Pencil, Plus, Trash2 } from "@lucide/vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { openlistGet, jobDelete, jobGetJob, jobPost, jobPut } from "@/api/job";
 import { parseSize, parseTime } from "@/utils/utils";
@@ -137,7 +137,7 @@ const getJobList = () => {
   loading.value = true;
   jobGetJob(params.value)
     .then((res) => {
-      jobData.value = res.data;
+      jobData.value = res.data || { dataList: [], count: 0 };
     })
     .finally(() => {
       loading.value = false;
@@ -376,7 +376,7 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
 
     <div class="primary-actions">
       <el-button type="primary" :icon="Plus" @click="addShow">{{ $t("home.newJob") }}</el-button>
-      <el-button v-if="jobData.count > 1" type="success" :icon="CaretRight" :loading="btnLoading" @click="runAllJob">
+      <el-button v-if="jobData.count > 1" plain :icon="CirclePlay" :loading="btnLoading" @click="runAllJob">
         {{ $t("home.runAll") }}
       </el-button>
     </div>
@@ -426,27 +426,21 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
         </div>
 
         <div class="job-actions">
-          <el-button type="primary" :icon="CaretRight" :loading="btnLoading" @click="runJob(item)">{{ $t("home.manualRun") }}</el-button>
-          <el-button type="danger" :icon="Delete" :loading="btnLoading" @click="removeJob(item)">{{ $t("common.delete") }}</el-button>
-          <el-button :icon="Edit" :loading="btnLoading" @click="editJobShow(item)">{{ $t("common.edit") }}</el-button>
+          <el-button class="primary-row-action" type="primary" :icon="CirclePlay" :loading="btnLoading" @click="runJob(item)">{{ $t("home.manualRun") }}</el-button>
+          <el-button class="detail-action" plain :icon="Eye" :loading="btnLoading" @click="detail(item.id)">
+            {{ $t("home.detail") }}
+          </el-button>
+          <el-button text :icon="Pencil" :loading="btnLoading" @click="editJobShow(item)">{{ $t("common.edit") }}</el-button>
           <el-button
             v-if="item.isCron != 2"
-            :type="item.enable ? 'warning' : 'success'"
-            :icon="item.enable ? CircleClose : CircleCheck"
+            text
+            :icon="item.enable ? CircleX : CircleCheck"
             :loading="btnLoading"
             @click="setJobEnabled(item, !item.enable)"
           >
             {{ item.enable ? $t("common.disable") : $t("common.enable") }}
           </el-button>
-          <el-button
-            type="success"
-            :icon="View"
-            :loading="btnLoading"
-            :class="{ 'full-row-action': item.isCron != 2 }"
-            @click="detail(item.id)"
-          >
-            {{ $t("home.detail") }}
-          </el-button>
+          <el-button type="danger" text :icon="Trash2" :loading="btnLoading" @click="removeJob(item)">{{ $t("common.delete") }}</el-button>
         </div>
       </article>
     </div>
@@ -629,7 +623,9 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
 
     h1 {
       margin: 0;
-      font-size: 22px;
+      font-size: 24px;
+      font-weight: 720;
+      letter-spacing: 0;
       line-height: 1.3;
       color: var(--text-primary);
     }
@@ -645,9 +641,10 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    margin: 14px 0;
+    margin: 16px 0;
 
     .el-button {
+      min-height: 40px;
       width: 100%;
       margin: 0;
     }
@@ -666,14 +663,19 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
     gap: 18px;
     color: var(--text-muted);
     text-align: center;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg, 18px);
+    background: var(--surface-panel, var(--home-item-background-color));
   }
 
   .job-card {
-    margin-bottom: 12px;
-    padding: 14px;
+    position: relative;
+    margin-bottom: 14px;
+    padding: 16px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--home-item-background-color);
+    border-radius: var(--radius-md, 14px);
+    background: var(--surface-panel, var(--home-item-background-color));
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
 
     .job-card-header {
       display: flex;
@@ -688,7 +690,8 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
       h2 {
         margin: 0;
         overflow: hidden;
-        font-size: 17px;
+        font-size: 18px;
+        letter-spacing: 0;
         line-height: 1.35;
         color: var(--text-primary);
         text-overflow: ellipsis;
@@ -705,8 +708,8 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
 
     .job-status {
       flex: 0 0 auto;
-      padding: 3px 8px;
-      border-radius: 4px;
+      padding: 4px 9px;
+      border-radius: var(--radius-pill, 999px);
       font-size: 12px;
       font-weight: 700;
     }
@@ -717,16 +720,16 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
     }
 
     .is-disabled {
-      color: var(--fail-color);
-      background: rgba(224, 49, 49, 0.12);
+      color: var(--text-muted);
+      background: color-mix(in srgb, var(--text-muted) 12%, transparent);
     }
 
     .job-meta {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin: 14px 0;
-      padding: 10px 0;
+      margin: 16px 0;
+      padding: 13px 0;
       border-top: 1px solid var(--border-color);
       border-bottom: 1px solid var(--border-color);
 
@@ -780,21 +783,23 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
 
     .path-chip {
       max-width: 100%;
-      padding: 4px 7px;
-      border-radius: 4px;
+      padding: 5px 8px;
+      border-radius: var(--radius-xs, 7px);
       box-sizing: border-box;
       overflow-wrap: anywhere;
-      font-size: 12px;
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.45;
     }
 
     .source-path {
-      color: #7048e8;
-      background: rgba(112, 72, 232, 0.12);
+      color: var(--accent-purple);
+      background: var(--accent-purple-soft);
     }
 
     .target-path {
       color: var(--active-color);
-      background: rgba(37, 99, 235, 0.12);
+      background: var(--brand-soft);
     }
 
     .job-actions {
@@ -812,6 +817,11 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
 
       .full-row-action {
         grid-column: 1 / -1;
+      }
+
+      .primary-row-action,
+      .detail-action {
+        min-height: 38px;
       }
     }
   }
@@ -853,8 +863,8 @@ const toIgnore = () => window.open("https://dr34m.cn/2024/09/newpost-60/", "_bla
 :global(.mobile-job-drawer .editor-section) {
   padding: 14px;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--home-item-background-color);
+  border-radius: var(--radius-md, 14px);
+  background: var(--surface-panel, var(--home-item-background-color));
 }
 
 :global(.mobile-job-drawer .editor-section + .editor-section) {

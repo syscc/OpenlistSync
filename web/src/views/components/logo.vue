@@ -1,6 +1,6 @@
 <template>
     <div class="logo">
-        <el-image style="width: 36px; height: 36px" src="/logo.svg" fit="contain" />
+        <img class="logo-mark" src="/logo.svg" alt="" width="34" height="34" />
         <div class="logo-title">{{ $t('title') }}</div>
     </div>
 </template>
@@ -9,34 +9,22 @@
 .logo {
     display: flex;
     align-items: center;
+    min-width: 0;
 
-    .logo-title {
-        font-family: "Poppins", "微软雅黑", sans-serif;
-        font-size: 24px;
-        font-weight: bold;
-        margin-left: 12px;
-        background: linear-gradient(60deg,
-                #f5d31b 0%,
-                #d4a127 10%,
-                #f5d31b 20%,
-                #d4a127 30%,
-                #f5d31b 40%,
-                #d4a127 50%,
-                #f5d31b 60%,
-                #d4a127 70%,
-                #f5d31b 80%,
-                #d4a127 90%,
-                #f5d31b 100%);
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: shine 8s linear infinite;
-        background-size: 200% auto;
+    .logo-mark {
+        width: 34px;
+        height: 34px;
+        display: block;
     }
 
-    @keyframes shine {
-        to {
-            background-position: 200% center;
-        }
+    .logo-title {
+        margin-left: 10px;
+        color: var(--text-primary);
+        font-size: 21px;
+        font-weight: 760;
+        line-height: 1;
+        letter-spacing: 0;
+        white-space: nowrap;
     }
 }
 </style>

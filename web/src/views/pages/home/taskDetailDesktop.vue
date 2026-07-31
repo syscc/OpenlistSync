@@ -5,7 +5,7 @@ import { jobGetTaskItem } from "@/api/job";
 import { taskItemStatusKeys } from "@/utils/taskItemStatus";
 import menuRefresh from "./components/menuRefresh.vue";
 import taskDetailTable from "./components/taskDetailTable.vue";
-import { Back } from "@element-plus/icons-vue";
+import { ArrowLeft } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 
 const route = useRoute();
@@ -59,7 +59,7 @@ const pageChange = (val) => {
   <div class="task-detail table-page">
     <div class="top-box">
       <div class="top-left">
-        <el-button type="primary" :icon="Back" @click="goback" size="small">{{ $t("common.back") }}</el-button>
+        <el-button plain :icon="ArrowLeft" @click="goback" size="small">{{ $t("common.back") }}</el-button>
         <el-select v-model="params.status" :placeholder="$t('taskDetail.filterStatus')" @change="getTaskItemList" clearable class="filter-select">
           <el-option :label="$t(item)" :value="index" v-for="(item, index) in taskItemStatusKeys" :key="item" />
         </el-select>
@@ -78,6 +78,13 @@ const pageChange = (val) => {
 
 <style lang="scss" scoped>
 .task-detail {
+  .table-page-box {
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 14px);
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
+  }
+
   .top-left {
     display: flex;
     align-items: center;

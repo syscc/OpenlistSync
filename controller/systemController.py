@@ -1,8 +1,10 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from common.LNG import language
 from common.config import getConfig
 from controller.baseController import BaseHandler, handle_request, cookieName
+from tornado.concurrent import run_on_executor
 from service.system import configService, userService
 
 
@@ -58,3 +60,19 @@ class Config(BaseHandler):
     @handle_request
     def post(self, req):
         return configService.updateConfig(req)
+
+
+class ProxyReveal(BaseHandler):
+    @handle_request
+    def get(self, req):
+        self.set_header('Cache-Control', 'no-store')
+        return configService.revealProxyServer()
+
+
+class ProxyTest(BaseHandler):
+    executor = ThreadPoolExecutor(2)
+
+    @run_on_executor
+    @handle_request
+    def post(self, req):
+        return configService.testProxyServer(req)

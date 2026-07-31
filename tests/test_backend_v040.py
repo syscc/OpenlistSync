@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import socket
 import sqlite3
 import tempfile
 import threading
@@ -10,13 +11,14 @@ from pathlib import Path
 from unittest import mock
 
 from common import LNG, config, locales, sqlInit
-from common.httpApp import make_app, redact_request_uri, resolve_front_dir
+from common.httpApp import MainIndex, make_app, redact_request_uri, resolve_front_dir
 from data import start as sourceStart
+from media_tools import openlist_media_renamer as mediaRenamer
 from service.mediaScraping import mediaScrapingService
 from service.notify import notifyService
 from service.openlist.openlistClient import OpenListClient
 from service.syncJob import jobClient, jobService, taskService
-from service.system import onStart
+from service.system import configService, onStart
 from service.webhook import refreshService, webhookService
 
 
@@ -311,6 +313,17 @@ class JobFilteringTests(unittest.TestCase):
 
 
 class ApiCompatibilityTests(unittest.TestCase):
+    def test_main_index_renders_relative_frontend_from_absolute_path(self):
+        with tempfile.TemporaryDirectory(dir='.') as temp_dir:
+            front_dir = os.path.relpath(temp_dir)
+            index_path = os.path.join(front_dir, 'index.html')
+            Path(index_path).write_text('web', encoding='utf-8')
+            handler = object.__new__(MainIndex)
+            handler.front_dir = front_dir
+            with mock.patch.object(MainIndex, 'render') as render:
+                handler.get()
+            render.assert_called_once_with(os.path.abspath(index_path))
+
     def test_access_log_redacts_sensitive_query_values(self):
         uri = redact_request_uri('/webhook?apikey=private-key&title=Ready%20Now&token=secret')
         self.assertNotIn('private-key', uri)
@@ -324,6 +337,8 @@ class ApiCompatibilityTests(unittest.TestCase):
         self.assertIn('/svr/openlist$', patterns)
         self.assertIn('/svr/media/scraping$', patterns)
         self.assertIn('/svr/system/config$', patterns)
+        self.assertIn('/svr/system/proxy/reveal$', patterns)
+        self.assertIn('/svr/system/proxy/test$', patterns)
         self.assertIn('/webhook$', patterns)
         self.assertNotIn('/svr/alist$', patterns)
 
@@ -371,6 +386,679 @@ class ApiCompatibilityTests(unittest.TestCase):
             'path': '/media/tv/Show (2026)',
             'refresh': True,
         })
+
+
+class TmdbConfigurationTests(unittest.TestCase):
+    def test_proxy_reveal_returns_full_connection_string_on_demand(self):
+        saved_url = 'http://proxy-user:stored-secret@proxy.local:8080'
+        store = {
+            configService.PROXY_SERVER_KEY: json.dumps({
+                'enabled': True,
+                'url': saved_url,
+            }),
+        }
+        with mock.patch.object(
+                configService.systemConfigMapper,
+                'getConfigValue',
+                side_effect=lambda key: store.get(key)):
+            public = configService.getConfig()['proxyServer']
+            revealed = configService.revealProxyServer()
+
+        self.assertEqual('http://proxy-user@proxy.local:8080', public['url'])
+        self.assertNotIn('stored-secret', json.dumps(public))
+        self.assertEqual({'url': saved_url}, revealed)
+
+    def test_system_config_migrates_legacy_proxy_and_preserves_redacted_password(self):
+        store = {
+            configService.GLOBAL_EXCLUDE_KEY: '*.tmp',
+            configService.TMDB_PROXY_KEY: json.dumps({
+                'enabled': True,
+                'type': 'http',
+                'host': 'old-proxy.local',
+                'port': 8080,
+                'username': 'old-user',
+                'password': 'stored-secret',
+            }),
+        }
+
+        def set_value(key, value):
+            store[key] = value
+
+        with mock.patch.object(
+                configService.systemConfigMapper,
+                'getConfigValue',
+                side_effect=lambda key: store.get(key)), mock.patch.object(
+                configService.systemConfigMapper,
+                'setConfigValue',
+                side_effect=set_value) as set_mock:
+            result = configService.getConfig()
+            self.assertEqual({
+                'enabled': True,
+                'url': 'http://old-user@old-proxy.local:8080',
+                'passwordSet': True,
+            }, result['proxyServer'])
+            self.assertNotIn('stored-secret', json.dumps(result))
+
+            result = configService.updateConfig({
+                'proxyServer': {
+                    'enabled': False,
+                    'url': result['proxyServer']['url'],
+                },
+            })
+            saved_proxy = json.loads(store[configService.PROXY_SERVER_KEY])
+            self.assertFalse(saved_proxy['enabled'])
+            self.assertEqual(
+                'http://old-user:stored-secret@old-proxy.local:8080',
+                saved_proxy['url'],
+            )
+            self.assertFalse(result['proxyServer']['enabled'])
+            self.assertTrue(result['proxyServer']['passwordSet'])
+            self.assertEqual('*.tmp', store[configService.GLOBAL_EXCLUDE_KEY])
+
+            previous_proxy = store[configService.PROXY_SERVER_KEY]
+            result = configService.updateConfig({'globalExclude': ['*.nfo', '@eaDir']})
+            self.assertEqual('*.nfo:@eaDir', result['globalExclude'])
+            self.assertEqual(previous_proxy, store[configService.PROXY_SERVER_KEY])
+
+            result = configService.updateConfig({
+                'proxyServer': {'clearCredentials': True},
+            })
+            saved_proxy = json.loads(store[configService.PROXY_SERVER_KEY])
+            self.assertEqual('http://old-proxy.local:8080', saved_proxy['url'])
+            self.assertFalse(result['proxyServer']['passwordSet'])
+            self.assertNotIn('password', result['proxyServer'])
+            self.assertGreaterEqual(set_mock.call_count, 3)
+
+    def test_system_config_accepts_proxy_url_auth_variants_and_new_key_wins(self):
+        cases = [
+            ('http://proxy.local:8080', 'http://proxy.local:8080', False),
+            (
+                'http://user%20name:p@ss@proxy.local:8080',
+                'http://user%20name:p%40ss@proxy.local:8080',
+                True,
+            ),
+            ('http://:password@proxy.local:3128', 'http://:password@proxy.local:3128', True),
+            ('socks://proxy.local:1080', 'socks://proxy.local:1080', False),
+            ('socks://user:password@[2001:db8::1]:1080', 'socks://user:password@[2001:db8::1]:1080', True),
+        ]
+        for value, expected, password_set in cases:
+            store = {
+                configService.TMDB_PROXY_KEY: json.dumps({
+                    'enabled': True,
+                    'type': 'http',
+                    'host': 'legacy.local',
+                    'port': 8080,
+                }),
+            }
+            with self.subTest(value=value), mock.patch.object(
+                    configService.systemConfigMapper,
+                    'getConfigValue',
+                    side_effect=lambda key: store.get(key)), mock.patch.object(
+                    configService.systemConfigMapper,
+                    'setConfigValue',
+                    side_effect=lambda key, saved: store.__setitem__(key, saved)):
+                result = configService.updateConfig({
+                    'proxyServer': {'enabled': True, 'url': value},
+                })
+                saved = json.loads(store[configService.PROXY_SERVER_KEY])
+                self.assertEqual(expected, saved['url'])
+                self.assertTrue(saved['enabled'])
+                self.assertEqual(password_set, result['proxyServer']['passwordSet'])
+                self.assertEqual(
+                    saved,
+                    configService.getProxyServer(),
+                )
+
+    def test_proxy_server_new_key_precedes_legacy_and_invalid_new_value_fails_closed(self):
+        legacy = json.dumps({
+            'enabled': False,
+            'type': 'http',
+            'host': 'legacy.local',
+            'port': 8080,
+            'username': 'legacy-user',
+            'password': 'legacy-secret',
+        })
+        store = {configService.TMDB_PROXY_KEY: legacy}
+        with mock.patch.object(
+                configService.systemConfigMapper,
+                'getConfigValue',
+                side_effect=lambda key: store.get(key)):
+            self.assertEqual({
+                'enabled': False,
+                'url': 'http://legacy-user:legacy-secret@legacy.local:8080',
+            }, configService.getProxyServer())
+
+            store[configService.PROXY_SERVER_KEY] = json.dumps({
+                'enabled': False,
+                'url': 'socks://new.local:1080',
+            })
+            self.assertEqual({
+                'enabled': False,
+                'url': 'socks://new.local:1080',
+            }, configService.getProxyServer())
+
+            store[configService.PROXY_SERVER_KEY] = '{invalid json'
+            self.assertEqual({
+                'enabled': False,
+                'url': '',
+            }, configService.getProxyServer())
+
+    def test_legacy_proxy_post_preserves_password_only_for_same_endpoint(self):
+        store = {
+            configService.PROXY_SERVER_KEY: json.dumps({
+                'enabled': True,
+                'url': 'http://old-user:stored-secret@old.local:8080',
+            }),
+        }
+        with mock.patch.object(
+                configService.systemConfigMapper,
+                'getConfigValue',
+                side_effect=lambda key: store.get(key)), mock.patch.object(
+                configService.systemConfigMapper,
+                'setConfigValue',
+                side_effect=lambda key, value: store.__setitem__(key, value)):
+            configService.updateConfig({
+                'tmdbProxy': {
+                    'enabled': False,
+                    'type': 'http',
+                    'host': 'old.local',
+                    'port': 8080,
+                    'username': 'old-user',
+                    'password': '',
+                },
+            })
+            saved = json.loads(store[configService.PROXY_SERVER_KEY])
+            self.assertEqual('http://old-user:stored-secret@old.local:8080', saved['url'])
+            self.assertFalse(saved['enabled'])
+
+            configService.updateConfig({
+                'tmdbProxy': {
+                    'enabled': True,
+                    'type': 'socks5',
+                    'host': 'new.local',
+                    'port': 1080,
+                    'username': '',
+                    'password': '',
+                },
+            })
+
+        saved = json.loads(store[configService.PROXY_SERVER_KEY])
+        self.assertEqual('socks://new.local:1080', saved['url'])
+        self.assertTrue(saved['enabled'])
+
+    def test_legacy_proxy_post_parses_string_enabled_value(self):
+        store = {
+            configService.PROXY_SERVER_KEY: json.dumps({
+                'enabled': True,
+                'url': 'http://proxy.local:8080',
+            }),
+        }
+        with mock.patch.object(
+                configService.systemConfigMapper,
+                'getConfigValue',
+                side_effect=lambda key: store.get(key)), mock.patch.object(
+                configService.systemConfigMapper,
+                'setConfigValue',
+                side_effect=lambda key, value: store.__setitem__(key, value)):
+            configService.updateConfig({
+                'tmdbProxy': {'enabled': 'false'},
+            })
+
+        saved = json.loads(store[configService.PROXY_SERVER_KEY])
+        self.assertFalse(saved['enabled'])
+        self.assertEqual('http://proxy.local:8080', saved['url'])
+
+    def test_proxy_server_changed_endpoint_does_not_reuse_password(self):
+        cases = [
+            'http://old-user@new.local:8080',
+            'socks://old-user@old.local:8080',
+            'http://new-user@old.local:8080',
+        ]
+        for new_url in cases:
+            store = {
+                configService.PROXY_SERVER_KEY: json.dumps({
+                    'enabled': True,
+                    'url': 'http://old-user:stored-secret@old.local:8080',
+                }),
+            }
+            with self.subTest(new_url=new_url), mock.patch.object(
+                    configService.systemConfigMapper,
+                    'getConfigValue',
+                    side_effect=lambda key: store.get(key)), mock.patch.object(
+                    configService.systemConfigMapper,
+                    'setConfigValue',
+                    side_effect=lambda key, value: store.__setitem__(key, value)):
+                result = configService.updateConfig({
+                    'proxyServer': {'enabled': True, 'url': new_url},
+                })
+
+            saved = json.loads(store[configService.PROXY_SERVER_KEY])
+            self.assertEqual(new_url, saved['url'])
+            self.assertFalse(result['proxyServer']['passwordSet'])
+
+    def test_system_config_rejects_invalid_proxy_urls(self):
+        cases = [
+            '',
+            'proxy.local:8080',
+            'ftp://proxy.local:21',
+            'http://proxy.local',
+            'http://proxy.local:0',
+            'http://proxy.local:65536',
+            'http://proxy.local:invalid',
+            'http://proxy local:8080',
+            'http://proxy.local:8080/path',
+            'http://proxy.local:8080?query=1',
+            'http://proxy.local:8080#fragment',
+            'socks5://proxy.local:1080',
+            'http://[abc]:8080',
+            'socks://2001:db8::1:1080',
+        ]
+        for value in cases:
+            with self.subTest(value=value), mock.patch.object(
+                    configService.systemConfigMapper,
+                    'getConfigValue',
+                    return_value=None), mock.patch.object(
+                    configService.systemConfigMapper,
+                    'setConfigValue') as set_mock:
+                with self.assertRaisesRegex(Exception, 'Proxy server'):
+                    configService.updateConfig({
+                        'proxyServer': {'enabled': True, 'url': value},
+                    })
+                set_mock.assert_not_called()
+
+    def test_proxy_latency_test_uses_submitted_url_without_persisting(self):
+        response = mock.Mock(status_code=204)
+        session = mock.Mock()
+        session.get.return_value = response
+        client = mock.Mock()
+        client.session = session
+        client.proxies = {
+            'http': 'http://new-proxy.local:8080',
+            'https': 'http://new-proxy.local:8080',
+        }
+
+        with mock.patch.object(
+                configService,
+                'getProxyServer',
+                return_value={'enabled': False, 'url': ''}), mock.patch.object(
+                configService.mediaRenamer,
+                'TMDbClient',
+                return_value=client) as client_class, mock.patch.object(
+                configService.time,
+                'monotonic',
+                side_effect=[10.0, 10.123]):
+            result = configService.testProxyServer({
+                'url': 'http://new-proxy.local:8080',
+            })
+
+        self.assertEqual({
+            'url': configService.PROXY_TEST_URL,
+            'latencyMs': 123,
+            'statusCode': 204,
+        }, result)
+        client_class.assert_called_once_with(proxy={'url': 'http://new-proxy.local:8080'})
+        session.get.assert_called_once_with(
+            configService.PROXY_TEST_URL,
+            timeout=configService.PROXY_TEST_TIMEOUT,
+            proxies=client.proxies,
+            allow_redirects=False,
+        )
+        response.close.assert_called_once_with()
+        session.close.assert_called_once_with()
+
+    def test_proxy_latency_test_preserves_saved_credentials_for_redacted_url(self):
+        response = mock.Mock(status_code=204)
+        session = mock.Mock()
+        session.get.return_value = response
+        client = mock.Mock()
+        client.session = session
+        client.proxies = {}
+        saved_url = 'http://proxy-user:stored-secret@proxy.local:8080'
+
+        with mock.patch.object(
+                configService,
+                'getProxyServer',
+                return_value={'enabled': True, 'url': saved_url}), mock.patch.object(
+                configService.mediaRenamer,
+                'TMDbClient',
+                return_value=client) as client_class:
+            configService.testProxyServer({'url': 'http://proxy-user@proxy.local:8080'})
+
+        client_class.assert_called_once_with(proxy={'url': saved_url})
+
+    def test_proxy_latency_test_redacts_request_errors(self):
+        session = mock.Mock()
+        session.get.side_effect = configService.mediaRenamer.requests.ConnectionError(
+            'failed via http://proxy-user:stored-secret@proxy.local:8080'
+        )
+        client = mock.Mock()
+        client.session = session
+        client.proxies = {}
+        client._redact_error.return_value = 'failed via <redacted>'
+
+        with mock.patch.object(
+                configService,
+                'getProxyServer',
+                return_value={'enabled': True, 'url': 'http://proxy.local:8080'}), mock.patch.object(
+                configService.mediaRenamer,
+                'TMDbClient',
+                return_value=client):
+            with self.assertRaises(Exception) as caught:
+                configService.testProxyServer({})
+
+        self.assertIn('Proxy test failed: failed via <redacted>', str(caught.exception))
+        self.assertNotIn('stored-secret', str(caught.exception))
+        session.close.assert_called_once_with()
+
+    def test_proxy_latency_test_rejects_non_204_responses(self):
+        for status_code in (200, 302, 407):
+            with self.subTest(status_code=status_code):
+                response = mock.Mock(status_code=status_code)
+                session = mock.Mock()
+                session.get.return_value = response
+                client = mock.Mock()
+                client.session = session
+                client.proxies = {}
+
+                with mock.patch.object(
+                        configService,
+                        'getProxyServer',
+                        return_value={'enabled': True, 'url': 'http://proxy.local:8080'}), mock.patch.object(
+                        configService.mediaRenamer,
+                        'TMDbClient',
+                        return_value=client):
+                    with self.assertRaisesRegex(Exception, r'expected HTTP 204'):
+                        configService.testProxyServer({})
+
+                response.close.assert_called_once_with()
+                session.close.assert_called_once_with()
+
+    def test_media_config_defaults_and_normalizes_tmdb_api_url(self):
+        self.assertEqual(
+            'https://api.themoviedb.org',
+            mediaScrapingService._default_config()['tmdbApiUrl'],
+        )
+        cases = [
+            ('', 'https://api.themoviedb.org'),
+            ('api.tmdb.org/', 'https://api.tmdb.org'),
+            ('https://api.themoviedb.org/3/', 'https://api.themoviedb.org'),
+            ('http://mirror.example/tmdb/', 'http://mirror.example/tmdb'),
+        ]
+        for value, expected in cases:
+            with self.subTest(value=value):
+                normalized = mediaScrapingService._normalize_config({'tmdbApiUrl': value})
+                self.assertEqual(expected, normalized['tmdbApiUrl'])
+
+        for value in (
+                'ftp://api.tmdb.org',
+                'https://user:password@api.tmdb.org',
+                'https://api.tmdb.org?api_key=secret'):
+            with self.subTest(value=value), self.assertRaises(mediaRenamer.TMDbError):
+                mediaScrapingService._normalize_config({'tmdbApiUrl': value})
+
+    def test_runner_config_reads_current_proxy_only_for_tmdb(self):
+        config_data = mediaScrapingService._normalize_config({
+            'tmdbApiKey': 'tmdb-key',
+            'tmdbApiUrl': 'api.tmdb.org',
+        })
+        openlist = {
+            'url': 'https://openlist.example',
+            'token': 'openlist-token',
+        }
+        http_proxy = {'enabled': True, 'url': 'http://first-proxy.local:8080'}
+        socks_proxy = {'enabled': True, 'url': 'socks://second-proxy.local:1080'}
+        with mock.patch.object(
+                mediaScrapingService.configService,
+                'getProxyServer',
+                side_effect=[http_proxy, socks_proxy]) as get_proxy:
+            first = mediaScrapingService._build_runner_config(config_data, openlist)
+            second = mediaScrapingService._build_runner_config(config_data, openlist)
+
+        self.assertEqual(2, get_proxy.call_count)
+        self.assertEqual({'url': http_proxy['url']}, first['tmdb']['proxy'])
+        self.assertEqual({'url': socks_proxy['url']}, second['tmdb']['proxy'])
+        self.assertEqual('https://api.tmdb.org', first['tmdb']['api_base_url'])
+        self.assertNotIn('proxy', first['openlist'])
+
+
+class TmdbClientTests(unittest.TestCase):
+    def test_tmdb_request_uses_custom_url_and_scoped_http_or_socks5_proxy(self):
+        cases = [
+            (
+                {'url': 'http://user%20name:p%40ss%2Fword@proxy.local:8080'},
+                'http://user%20name:p%40ss%2Fword@proxy.local:8080',
+            ),
+            (
+                {'url': 'socks://[2001:db8::1]:1080'},
+                'socks5h://[2001:db8::1]:1080',
+            ),
+            (
+                {'url': 'http://:password@proxy.local:3128'},
+                'http://:password@proxy.local:3128',
+            ),
+            (
+                {'url': 'socks://proxy.local:1080'},
+                'socks5h://proxy.local:1080',
+            ),
+            (
+                {'url': 'socks://:password@proxy.local:1080'},
+                'socks5h://:password@proxy.local:1080',
+            ),
+        ]
+        for proxy, expected_proxy_url in cases:
+            with self.subTest(proxy=proxy['url']):
+                response = mock.Mock(status_code=200, text='{"results": []}')
+                session = mock.Mock()
+                session.get.return_value = response
+                client = mediaRenamer.TMDbClient(
+                    api_key='api-secret',
+                    api_base_url='https://mirror.example/tmdb/3/',
+                    proxy=proxy,
+                    session=session,
+                )
+
+                result = client.request('/search/movie', {'query': 'Dune'})
+
+                self.assertEqual({'results': []}, result)
+                self.assertFalse(session.trust_env)
+                session.get.assert_called_once()
+                url = session.get.call_args.args[0]
+                request_options = session.get.call_args.kwargs
+                self.assertEqual(
+                    'https://mirror.example/tmdb/3/search/movie',
+                    url,
+                )
+                self.assertEqual({
+                    'http': expected_proxy_url,
+                    'https': expected_proxy_url,
+                }, request_options['proxies'])
+                self.assertEqual('Dune', request_options['params']['query'])
+                self.assertEqual('api-secret', request_options['params']['api_key'])
+                response.close.assert_called_once_with()
+
+    def test_socks_password_only_sends_empty_username_and_password(self):
+        captured = {}
+        server_errors = []
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.bind(('127.0.0.1', 0))
+        listener.listen(1)
+        listener.settimeout(3)
+        proxy_port = listener.getsockname()[1]
+
+        def recv_exact(conn, size):
+            data = b''
+            while len(data) < size:
+                chunk = conn.recv(size - len(data))
+                if not chunk:
+                    raise EOFError('SOCKS client closed the connection')
+                data += chunk
+            return data
+
+        def serve_proxy():
+            try:
+                conn, _ = listener.accept()
+                with conn:
+                    conn.settimeout(3)
+                    greeting = recv_exact(conn, 2)
+                    captured['methods'] = recv_exact(conn, greeting[1])
+                    conn.sendall(b'\x05\x02')
+
+                    auth_header = recv_exact(conn, 2)
+                    captured['username'] = recv_exact(conn, auth_header[1])
+                    password_length = recv_exact(conn, 1)[0]
+                    captured['password'] = recv_exact(conn, password_length)
+                    conn.sendall(b'\x01\x00')
+
+                    request_header = recv_exact(conn, 4)
+                    if request_header[3] != 3:
+                        raise AssertionError(f'unexpected address type: {request_header[3]}')
+                    host_length = recv_exact(conn, 1)[0]
+                    captured['target'] = (
+                        recv_exact(conn, host_length),
+                        int.from_bytes(recv_exact(conn, 2), 'big'),
+                    )
+                    conn.sendall(b'\x05\x00\x00\x01\x7f\x00\x00\x01\x00\x00')
+
+                    request = b''
+                    while b'\r\n\r\n' not in request:
+                        request += conn.recv(4096)
+                    captured['requestLine'] = request.split(b'\r\n', 1)[0]
+                    body = b'{"results": []}'
+                    conn.sendall(
+                        b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n'
+                        + f'Content-Length: {len(body)}\r\n'.encode()
+                        + b'Connection: close\r\n\r\n'
+                        + body
+                    )
+            except Exception as exc:
+                server_errors.append(exc)
+            finally:
+                listener.close()
+
+        thread = threading.Thread(target=serve_proxy, daemon=True)
+        thread.start()
+        try:
+            client = mediaRenamer.TMDbClient(
+                api_key='api-secret',
+                api_base_url='http://tmdb.test',
+                proxy={'url': f'socks://:only-secret@127.0.0.1:{proxy_port}'},
+            )
+            result = client.request('configuration')
+        finally:
+            thread.join(timeout=3)
+
+        self.assertFalse(thread.is_alive())
+        self.assertEqual([], server_errors)
+        self.assertEqual({'results': []}, result)
+        self.assertEqual(b'\x00\x02', captured['methods'])
+        self.assertEqual(b'', captured['username'])
+        self.assertEqual(b'only-secret', captured['password'])
+        self.assertEqual((b'tmdb.test', 80), captured['target'])
+        self.assertEqual(b'GET /3/configuration?language=zh-CN&api_key=api-secret HTTP/1.1',
+                         captured['requestLine'])
+
+    def test_http_password_only_sends_proxy_authorization(self):
+        captured = {}
+        server_errors = []
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.bind(('127.0.0.1', 0))
+        listener.listen(1)
+        listener.settimeout(3)
+        proxy_port = listener.getsockname()[1]
+
+        def serve_proxy():
+            try:
+                conn, _ = listener.accept()
+                with conn:
+                    conn.settimeout(3)
+                    request = b''
+                    while b'\r\n\r\n' not in request:
+                        request += conn.recv(4096)
+                    lines = request.split(b'\r\n')
+                    captured['requestLine'] = lines[0]
+                    captured['authorization'] = next(
+                        line.split(b': ', 1)[1]
+                        for line in lines
+                        if line.lower().startswith(b'proxy-authorization: ')
+                    )
+                    body = b'{"results": []}'
+                    conn.sendall(
+                        b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n'
+                        + f'Content-Length: {len(body)}\r\n'.encode()
+                        + b'Connection: close\r\n\r\n'
+                        + body
+                    )
+            except Exception as exc:
+                server_errors.append(exc)
+            finally:
+                listener.close()
+
+        thread = threading.Thread(target=serve_proxy, daemon=True)
+        thread.start()
+        try:
+            client = mediaRenamer.TMDbClient(
+                api_key='api-secret',
+                api_base_url='http://tmdb.test',
+                proxy={'url': f'http://:only-secret@127.0.0.1:{proxy_port}'},
+            )
+            https_proxy_manager = client.session.get_adapter('https://').proxy_manager_for(
+                client.proxy_url)
+            result = client.request('configuration')
+        finally:
+            thread.join(timeout=3)
+
+        self.assertFalse(thread.is_alive())
+        self.assertEqual([], server_errors)
+        self.assertEqual({'results': []}, result)
+        self.assertEqual(
+            {'Proxy-Authorization': 'Basic Om9ubHktc2VjcmV0'},
+            https_proxy_manager.proxy_headers,
+        )
+        self.assertEqual(b'Basic Om9ubHktc2VjcmV0', captured['authorization'])
+        self.assertEqual(
+            b'GET http://tmdb.test/3/configuration?language=zh-CN&api_key=api-secret HTTP/1.1',
+            captured['requestLine'],
+        )
+
+    def test_tmdb_request_errors_redact_api_and_proxy_credentials(self):
+        proxy = {'url': 'socks://proxy-user:p%40ss%2Fword@proxy.local:1080'}
+        encoded_password = 'p%40ss%2Fword'
+        proxy_url = f'socks5h://proxy-user:{encoded_password}@proxy.local:1080'
+        secret_text = (
+            'failed https://api.example/3/search/movie?api_key=api-secret '
+            f'with bearer-secret via {proxy_url}'
+        )
+        failures = [
+            mediaRenamer.requests.ConnectionError(secret_text),
+            mock.Mock(status_code=502, text=secret_text),
+        ]
+
+        for failure in failures:
+            with self.subTest(failure=type(failure).__name__):
+                session = mock.Mock()
+                if isinstance(failure, Exception):
+                    session.get.side_effect = failure
+                else:
+                    session.get.return_value = failure
+                client = mediaRenamer.TMDbClient(
+                    api_key='api-secret',
+                    bearer_token='bearer-secret',
+                    proxy=proxy,
+                    session=session,
+                )
+
+                with self.assertRaises(mediaRenamer.TMDbError) as caught:
+                    client.request('search/movie', {'query': 'Dune'})
+
+                message = str(caught.exception)
+                self.assertIn('<redacted>', message)
+                for secret in (
+                        'api-secret',
+                        'bearer-secret',
+                        'p@ss/word',
+                        encoded_password,
+                        proxy_url):
+                    self.assertNotIn(secret, message)
 
 
 class MediaSingleFileTests(unittest.TestCase):

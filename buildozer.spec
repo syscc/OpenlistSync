@@ -9,9 +9,9 @@ source.include_exts = py,png,jpg,jpeg,html,js,css,ttf,otf,svg,ico,json,gif,woff,
 source.include_patterns = front/**,locales/**,common/**,controller/**,mapper/**,media_tools/**,service/**,doc/config.ini
 source.exclude_patterns = .git/**,.venv/**,data/**,tests/**,web/**
 
-version = 0.3.0
+version = 0.3.1
 
-requirements = python3,pyjnius,android,tornado,requests,urllib3,certifi,chardet,idna,apscheduler,tzlocal,tzdata,setuptools,configparser,pathspec,pyyaml,openssl,sqlite3
+requirements = python3,pyjnius,android,tornado,requests,pysocks,urllib3,certifi,chardet,idna,apscheduler,tzlocal,tzdata,setuptools,configparser,pathspec,pyyaml,openssl,sqlite3
 
 orientation = portrait
 fullscreen = 0

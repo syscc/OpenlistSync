@@ -1,5 +1,6 @@
 tornado==6.5
 requests==2.32.3
+PySocks==1.7.1
 charset-normalizer>=3,<4
 APScheduler==3.11.0
 configparser==7.2.0

@@ -5,6 +5,7 @@ import { getMediaScrapingConfig, saveMediaScrapingConfig } from "@/api/mediaScra
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { Pencil, Plus, Save, Trash2 } from "@lucide/vue";
 
 const { t } = useI18n();
 const route = useRoute();
@@ -19,12 +20,17 @@ const formRef = ref();
 const configMode = ref(route.query.type === "mediaScraping" ? "mediaScraping" : "openlist");
 const saveMediaConfigLoading = ref(false);
 const extensionsText = ref("");
+const tmdbApiServerOptions = [
+  { label: "api.themoviedb.org", value: "https://api.themoviedb.org" },
+  { label: "api.tmdb.org", value: "https://api.tmdb.org" },
+];
 
 const defaultMediaConfig = () => ({
   defaultOpenlistId: null,
   openlistIds: [],
   tmdbApiKey: "",
   tmdbBearerToken: "",
+  tmdbApiUrl: "https://api.themoviedb.org",
   tmdbLanguage: "zh-CN",
   tmdbIncludeAdult: false,
   tmdbRequired: true,
@@ -214,10 +220,13 @@ onMounted(() => {
         <el-option :label="$t('engine.openlistMode')" value="openlist" />
         <el-option :label="$t('engine.scrapingMode')" value="mediaScraping" />
       </el-select>
+      <el-button v-if="configMode === 'openlist'" type="primary" :icon="Plus" @click="addShow">
+        {{ $t("engine.add") }}
+      </el-button>
     </div>
     <div class="loading-box content-none-data" v-loading="true" v-if="getLoading && configMode === 'openlist'">{{ $t("engine.loading") }}</div>
     <div v-else-if="configMode === 'openlist'" class="card-box">
-      <div class="card-item" v-for="item in openlistList" :key="item.id">
+      <article class="card-item" v-for="item in openlistList" :key="item.id">
         <div class="card-item-top">
           <el-image src="/openlist.svg" fit="contain" class="engine-logo" />
           <div class="engine-info">
@@ -229,14 +238,14 @@ onMounted(() => {
           </div>
         </div>
         <div class="card-item-bottom">
-          <el-button size="small" type="primary" @click="editShowDialog(item)">{{ $t("common.edit") }}</el-button>
-          <el-button size="small" type="danger" :loading="deleteLoading" @click="delOpenlist(item.id)">{{ $t("common.delete") }}</el-button>
+          <el-button size="small" plain :icon="Pencil" @click="editShowDialog(item)">{{ $t("common.edit") }}</el-button>
+          <el-button size="small" type="danger" text :icon="Trash2" :loading="deleteLoading" @click="delOpenlist(item.id)">{{ $t("common.delete") }}</el-button>
         </div>
-      </div>
-      <div class="card-item card-add" @click="addShow" v-if="!getLoading">
-        <template v-if="openlistList.length == 0">{{ $t("engine.empty") }}</template>
-        <span v-else>{{ $t("common.add") }}</span>
-      </div>
+      </article>
+      <button v-if="openlistList.length === 0" type="button" class="empty-card" @click="addShow">
+        <span class="empty-icon"><Plus :size="22" aria-hidden="true" /></span>
+        <span>{{ $t("engine.empty") }}</span>
+      </button>
     </div>
     <div v-else class="scraping-config">
       <el-form label-width="130px" size="small">
@@ -259,6 +268,21 @@ onMounted(() => {
 
         <section class="config-block">
           <h2>TMDb</h2>
+          <el-form-item :label="$t('engineScraping.tmdbApiServer')">
+            <div class="config-column config-width">
+              <el-select
+                v-model="mediaConfig.tmdbApiUrl"
+                filterable
+                allow-create
+                default-first-option
+                :reserve-keyword="false"
+                :placeholder="$t('engineScraping.tmdbApiServerPlaceholder')"
+              >
+                <el-option v-for="item in tmdbApiServerOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+              <span class="field-tip">{{ $t("engineScraping.tmdbApiServerTip") }}</span>
+            </div>
+          </el-form-item>
           <el-form-item label="API Key">
             <el-input v-model="mediaConfig.tmdbApiKey" class="config-width" show-password />
           </el-form-item>
@@ -322,7 +346,7 @@ onMounted(() => {
           </el-form-item>
         </section>
 
-        <el-button type="primary" :loading="saveMediaConfigLoading" @click="saveMediaConfig">
+        <el-button type="primary" :icon="Save" :loading="saveMediaConfigLoading" @click="saveMediaConfig">
           {{ $t("engineScraping.save") }}
         </el-button>
       </el-form>
@@ -358,6 +382,7 @@ onMounted(() => {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
+  overflow-y: auto;
 
   .loading-box {
     box-sizing: border-box;
@@ -366,7 +391,11 @@ onMounted(() => {
   }
 
   .engine-top {
-    padding: 16px 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 20px 6px;
   }
 
   .config-mode {
@@ -376,14 +405,15 @@ onMounted(() => {
   .scraping-config {
     box-sizing: border-box;
     max-width: 920px;
-    padding: 16px;
+    padding: 16px 20px 24px;
 
     .config-block {
       margin: 0 0 14px;
       padding: 16px 16px 4px;
-      background-color: var(--home-item-background-color);
+      background-color: var(--surface-panel, var(--home-item-background-color));
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: var(--radius-md, 14px);
+      box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
     }
 
     h2 {
@@ -397,6 +427,22 @@ onMounted(() => {
 
     .short-width {
       width: 180px;
+    }
+
+    .config-column {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .el-select {
+        width: 100%;
+      }
+    }
+
+    .field-tip {
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.5;
     }
 
     .option-url,
@@ -417,36 +463,45 @@ onMounted(() => {
 
   .card-box {
     box-sizing: border-box;
-    padding: 8px;
+    padding: 14px 20px 24px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
     width: 100%;
   }
 
   .card-item {
-    background-color: var(--home-item-background-color);
-    border-radius: 6px;
-    border: 1px solid transparent;
-    min-height: 118px;
-    margin: 8px;
-    padding: 10px;
+    background-color: var(--surface-panel, var(--home-item-background-color));
+    border-radius: var(--radius-md, 14px);
+    border: 1px solid var(--border-color);
+    min-height: 148px;
+    margin: 0;
+    padding: 18px;
     box-sizing: border-box;
-    transition: border-color 0.2s, transform 0.2s;
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
+    transition:
+      border-color var(--motion-base, 190ms) var(--ease-standard, ease),
+      box-shadow var(--motion-base, 190ms) var(--ease-standard, ease),
+      transform var(--motion-base, 190ms) var(--ease-standard, ease);
 
     &:hover {
-      border-color: var(--active-color);
-      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--active-color) 34%, var(--border-color));
+      box-shadow: var(--shadow-md, 0 14px 34px rgba(15, 23, 42, 0.09));
+      transform: translateY(-2px);
     }
 
     .card-item-top {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
     }
 
     .engine-logo {
-      width: 60px;
-      height: 60px;
+      width: 46px;
+      height: 46px;
+      padding: 7px;
+      border-radius: var(--radius-sm, 10px);
+      background: color-mix(in srgb, #27d9d2 10%, transparent);
     }
 
     .engine-info {
@@ -455,14 +510,15 @@ onMounted(() => {
     }
 
     .card-item-user {
-      font-size: 18px;
+      font-size: 17px;
+      font-weight: 650;
       display: flex;
       color: var(--text-primary);
     }
 
     .card-item-remark {
       margin-left: 6px;
-      color: var(--warning-color);
+      color: var(--text-muted);
       max-width: 120px;
       white-space: nowrap;
       overflow: hidden;
@@ -470,7 +526,7 @@ onMounted(() => {
     }
 
     .card-item-url {
-      margin-top: 8px;
+      margin-top: 6px;
       font-size: 12px;
       color: var(--text-secondary);
       word-break: break-all;
@@ -479,31 +535,60 @@ onMounted(() => {
     .card-item-bottom {
       display: flex;
       align-items: center;
-      justify-content: center;
-      margin-top: 12px;
+      justify-content: flex-end;
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
     }
   }
 
-  .card-add {
-    font-size: 26px;
-    cursor: pointer;
+  .empty-card {
+    min-height: 180px;
+    padding: 24px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    color: var(--active-color);
-    font-weight: 700;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    background: var(--surface-panel, var(--home-item-background-color));
+    border: 1px dashed color-mix(in srgb, var(--active-color) 36%, var(--border-color));
+    border-radius: var(--radius-md, 14px);
+    font: inherit;
+    cursor: pointer;
+
+    .empty-icon {
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--active-color);
+      background: color-mix(in srgb, var(--active-color) 10%, transparent);
+      border-radius: 50%;
+    }
+
+    &:hover {
+      border-style: solid;
+      background: color-mix(in srgb, var(--active-color) 3%, var(--home-item-background-color));
+    }
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--active-color) 55%, transparent);
+      outline-offset: 2px;
+    }
   }
 }
 
 @media (max-width: 768px) {
   .engine {
     .engine-top {
-      padding: 10px 8px 4px;
+      padding: 12px 12px 6px;
     }
 
     .scraping-config {
       max-width: 100%;
-      padding: 8px;
+      padding: 10px 12px 20px;
 
       :deep(.el-form-item) {
         display: block;
@@ -534,13 +619,13 @@ onMounted(() => {
 
     .card-box {
       grid-template-columns: minmax(0, 1fr);
-      padding: 4px;
+      padding: 10px 12px 20px;
     }
 
     .card-item {
       min-height: 0;
-      margin: 4px;
-      padding: 12px;
+      margin: 0;
+      padding: 16px;
 
       .card-item-top {
         justify-content: flex-start;
@@ -564,9 +649,8 @@ onMounted(() => {
       }
     }
 
-    .card-add {
-      min-height: 96px;
-      justify-content: center;
+    .empty-card {
+      min-height: 160px;
     }
   }
 }

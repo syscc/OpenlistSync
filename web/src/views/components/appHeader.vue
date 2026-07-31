@@ -1,19 +1,24 @@
 <script setup>
+import { useRouter } from 'vue-router';
 import lightDark from './lightDark.vue';
 import locale from './locale.vue';
 import logo from './logo.vue';
 import user from './user.vue';
+
+const router = useRouter();
 </script>
 
 <template>
-    <div class="header-box">
-        <logo class="logo" @click="$router.push('/')" />
+    <header class="header-box">
+        <button class="brand-button" type="button" :aria-label="$t('title')" @click="router.push('/')">
+            <logo />
+        </button>
         <div class="header-right">
             <locale class="header-item" />
             <lightDark class="header-item" />
             <user class="header-item" />
         </div>
-    </div>
+    </header>
 </template>
 
 <style lang="scss" scoped>
@@ -21,34 +26,50 @@ import user from './user.vue';
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
+    padding: 0 18px;
 
-    .logo {
+    .brand-button {
+        min-width: 0;
+        padding: 4px 6px;
+        border: 0;
+        border-radius: 12px;
+        color: inherit;
+        background: transparent;
         cursor: pointer;
+        transition: background-color 160ms ease, transform 160ms ease;
+    }
+
+    .brand-button:hover {
+        background-color: var(--surface-hover);
+    }
+
+    .brand-button:active {
+        transform: scale(0.98);
+    }
+
+    .brand-button:focus-visible {
+        outline: 2px solid var(--active-color);
+        outline-offset: 2px;
     }
 
     .header-right {
         display: flex;
         align-items: center;
-        margin-right: -6px;
+        gap: 8px;
     }
 
     .header-item {
-        margin: 0 12px;
+        flex: 0 0 auto;
     }
 }
 
 @media (max-width: 768px) {
     .header-box {
-        padding: 0 10px;
+        padding: 0 8px 0 10px;
 
         .header-right {
             min-width: 0;
-            margin-right: -2px;
-        }
-
-        .header-item {
-            margin: 0 6px;
+            gap: 4px;
         }
     }
 }
@@ -59,6 +80,16 @@ import user from './user.vue';
             margin-left: 8px;
             font-size: 20px;
         }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .header-box .brand-button {
+        transition: none;
+    }
+
+    .header-box .brand-button:active {
+        transform: none;
     }
 }
 </style>

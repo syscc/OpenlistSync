@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { Loading, RefreshRight } from "@element-plus/icons-vue";
+import { LoaderCircle, RefreshCw } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 
 const props = defineProps({
@@ -77,11 +77,21 @@ onBeforeUnmount(() => {
 <template>
   <div class="menu-refresh">
     <div class="refresh-label" v-show="needShow > 1">{{ refreshText || t("refresh.auto") }}</div>
-    <el-switch v-model="refreshStatus" v-show="needShow > 1" @change="refreshChange" />
-    <el-icon class="icon-btn" :class="{ spinning: loading }" @click="refreshData" v-show="needShow > 0">
-      <Loading v-if="loading" />
-      <RefreshRight v-else />
-    </el-icon>
+    <el-switch v-model="refreshStatus" v-show="needShow > 1" :aria-label="refreshText || t('refresh.auto')" @change="refreshChange" />
+    <el-tooltip :content="t('refresh.manual')" placement="bottom">
+      <button
+        v-show="needShow > 0"
+        type="button"
+        class="refresh-button"
+        :class="{ spinning: loading }"
+        :disabled="loading"
+        :aria-label="t('refresh.manual')"
+        @click="refreshData"
+      >
+        <LoaderCircle v-if="loading" :size="18" />
+        <RefreshCw v-else :size="18" />
+      </button>
+    </el-tooltip>
   </div>
 </template>
 
@@ -96,11 +106,38 @@ onBeforeUnmount(() => {
     color: var(--text-secondary);
   }
 
-  .icon-btn {
-    font-size: 25px;
+  .refresh-button {
+    width: 34px;
+    height: 34px;
     margin-left: 18px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--active-color);
+    background: color-mix(in srgb, var(--active-color) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--active-color) 20%, transparent);
+    border-radius: var(--radius-sm, 10px);
     cursor: pointer;
+    transition:
+      color var(--motion-fast, 160ms) ease,
+      background-color var(--motion-fast, 160ms) ease,
+      transform var(--motion-fast, 160ms) ease;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--active-color) 14%, transparent);
+      transform: translateY(-1px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--active-color) 55%, transparent);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
   }
 
   .spinning {
@@ -121,7 +158,7 @@ onBeforeUnmount(() => {
       display: none;
     }
 
-    .icon-btn {
+    .refresh-button {
       margin-left: 10px;
     }
   }

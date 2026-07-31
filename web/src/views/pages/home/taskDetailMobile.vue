@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { Back } from "@element-plus/icons-vue";
+import { ArrowLeft } from "@lucide/vue";
 import { jobGetTaskItem } from "@/api/job";
 import taskItemStatus, { taskItemStatusKeys } from "@/utils/taskItemStatus";
 import { parseSize, parseTime } from "@/utils/utils";
@@ -32,12 +32,14 @@ const getTaskItemList = () => {
   const query = { ...params.value };
   if (query.status === null || query.status === "") delete query.status;
   if (query.type === null || query.type === "") delete query.type;
-  jobGetTaskItem(query)
+    jobGetTaskItem(query)
     .then((res) => {
-      res.data.dataList.forEach((item) => {
+      const data = res.data || { dataList: [], count: 0 };
+      data.dataList = data.dataList || [];
+      data.dataList.forEach((item) => {
         item.progress = Math.min(parseInt(item.progress || 0), 100);
       });
-      taskItemData.value = res.data;
+      taskItemData.value = data;
     })
     .finally(() => {
       loading.value = false;
@@ -68,7 +70,7 @@ const handleCurrentChange = (value) => {
 <template>
   <div class="mobile-task-detail-page">
     <div class="mobile-page-header">
-      <el-button :icon="Back" circle @click="goback" :aria-label="$t('common.back')" />
+      <el-button :icon="ArrowLeft" circle @click="goback" :aria-label="$t('common.back')" />
       <div class="header-copy">
         <h1>{{ $t("taskDetail.title") }}</h1>
         <span>{{ $t("taskDetail.mobileItemCount", { count: taskItemData.count }) }}</span>
@@ -206,8 +208,9 @@ const handleCurrentChange = (value) => {
     margin-bottom: 12px;
     padding: 14px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--home-item-background-color);
+    border-radius: var(--radius-md, 14px);
+    background: var(--surface-panel, var(--home-item-background-color));
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
 
     .task-item-header {
       display: flex;
@@ -234,8 +237,8 @@ const handleCurrentChange = (value) => {
     }
 
     .type-0 {
-      color: #7048e8;
-      background: rgba(112, 72, 232, 0.12);
+      color: var(--accent-purple);
+      background: var(--accent-purple-soft);
     }
 
     .type-1,
@@ -306,13 +309,13 @@ const handleCurrentChange = (value) => {
     }
 
     .source-path {
-      color: #7048e8;
-      background: rgba(112, 72, 232, 0.1);
+      color: var(--accent-purple);
+      background: var(--accent-purple-soft);
     }
 
     .target-path {
       color: var(--active-color);
-      background: rgba(37, 99, 235, 0.1);
+      background: var(--brand-soft);
     }
 
     .error-reason {

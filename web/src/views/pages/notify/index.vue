@@ -4,6 +4,7 @@ import { delNotify, getNotifyList, postAddNotify, putEditNotify, putEnableNotify
 import notifyMethod, { notifyMethodKeys } from "@/utils/notifyMethod";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
+import { BellRing, FlaskConical, Pencil, Plus, Power, PowerOff, Trash2 } from "@lucide/vue";
 
 const { t } = useI18n();
 const notifyMethodLength = notifyMethodKeys.length;
@@ -227,9 +228,16 @@ onMounted(() => {
 
 <template>
   <div class="notify">
+    <div class="notify-toolbar">
+      <div class="toolbar-title">
+        <span class="toolbar-icon"><BellRing :size="18" aria-hidden="true" /></span>
+        <span>{{ $t("notify.method") }}</span>
+      </div>
+      <el-button type="primary" :icon="Plus" @click="addShow">{{ $t("notify.add") }}</el-button>
+    </div>
     <div class="loading-box content-none-data" v-loading="true" v-if="loading">{{ $t("notify.loading") }}</div>
     <div v-else class="card-box">
-      <div class="card-item" v-for="item in dataList" :key="item.id">
+      <article class="card-item" v-for="item in dataList" :key="item.id">
         <div class="card-item-top">
           <el-image :src="`/notify/${item.method}.png`" fit="contain" class="notify-logo" />
           <div class="notify-info">
@@ -240,21 +248,21 @@ onMounted(() => {
           </div>
         </div>
         <div class="card-item-bottom">
-          <el-button size="small" type="primary" @click="editShowDialog(item)">{{ $t("common.edit") }}</el-button>
-          <el-button size="small" type="success" v-if="item.enable == 0" :loading="enableLoading" @click="enableNotify(item.id, 1)">
+          <el-button size="small" plain :icon="Pencil" @click="editShowDialog(item)">{{ $t("common.edit") }}</el-button>
+          <el-button size="small" text :icon="Power" v-if="item.enable == 0" :loading="enableLoading" @click="enableNotify(item.id, 1)">
             {{ $t("common.enable") }}
           </el-button>
-          <el-button size="small" type="warning" v-else :loading="enableLoading" @click="enableNotify(item.id, 0)">
+          <el-button size="small" text :icon="PowerOff" v-else :loading="enableLoading" @click="enableNotify(item.id, 0)">
             {{ $t("common.disable") }}
           </el-button>
-          <el-button size="small" type="primary" :loading="tstLoading" @click="tstCu(item)">{{ $t("common.test") }}</el-button>
-          <el-button size="small" type="danger" :loading="deleteLoading" @click="delCu(item.id)">{{ $t("common.delete") }}</el-button>
+          <el-button size="small" text :icon="FlaskConical" :loading="tstLoading" @click="tstCu(item)">{{ $t("common.test") }}</el-button>
+          <el-button size="small" type="danger" text :icon="Trash2" :loading="deleteLoading" @click="delCu(item.id)">{{ $t("common.delete") }}</el-button>
         </div>
-      </div>
-      <div class="card-item card-add" @click="addShow" v-if="!loading">
-        <template v-if="dataList.length == 0">{{ $t("notify.empty") }}</template>
-        <span v-else>{{ $t("common.add") }}</span>
-      </div>
+      </article>
+      <button v-if="dataList.length === 0" type="button" class="empty-card" @click="addShow">
+        <span class="empty-icon"><Plus :size="22" aria-hidden="true" /></span>
+        <span>{{ $t("notify.empty") }}</span>
+      </button>
     </div>
 
     <el-dialog :close-on-click-modal="false" top="6vh" v-model="editShow" :title="editFlag ? $t('notify.edit') : $t('notify.add')" width="700px" :append-to-body="true">
@@ -359,7 +367,7 @@ onMounted(() => {
       </el-form>
       <template #footer>
         <el-button @click="closeShow">{{ $t("common.cancel") }}</el-button>
-        <el-button type="success" :loading="tstLoading" @click="tstCu()">{{ $t("common.test") }}</el-button>
+        <el-button :icon="FlaskConical" :loading="tstLoading" @click="tstCu()">{{ $t("common.test") }}</el-button>
         <el-button type="primary" @click="submit" :loading="editLoading">{{ $t("common.confirm") }}</el-button>
       </template>
     </el-dialog>
@@ -371,6 +379,35 @@ onMounted(() => {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
+  overflow-y: auto;
+
+  .notify-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 20px 6px;
+  }
+
+  .toolbar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 650;
+  }
+
+  .toolbar-icon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--active-color);
+    background: color-mix(in srgb, var(--active-color) 9%, transparent);
+    border-radius: var(--radius-sm, 10px);
+  }
 
   .loading-box {
     box-sizing: border-box;
@@ -380,78 +417,137 @@ onMounted(() => {
 
   .card-box {
     box-sizing: border-box;
-    padding: 8px;
+    padding: 14px 20px 24px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+    gap: 12px;
     width: 100%;
   }
 
   .card-item {
-    background-color: var(--home-item-background-color);
-    border-radius: 6px;
-    border: 1px solid transparent;
-    min-height: 120px;
-    margin: 8px;
-    padding: 10px;
+    background-color: var(--surface-panel, var(--home-item-background-color));
+    border-radius: var(--radius-md, 14px);
+    border: 1px solid var(--border-color);
+    min-height: 152px;
+    margin: 0;
+    padding: 18px;
     box-sizing: border-box;
-    transition: border-color 0.2s, transform 0.2s;
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(15, 23, 42, 0.05));
+    transition:
+      border-color var(--motion-base, 190ms) var(--ease-standard, ease),
+      box-shadow var(--motion-base, 190ms) var(--ease-standard, ease),
+      transform var(--motion-base, 190ms) var(--ease-standard, ease);
 
     &:hover {
-      border-color: var(--active-color);
-      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--active-color) 34%, var(--border-color));
+      box-shadow: var(--shadow-md, 0 14px 34px rgba(15, 23, 42, 0.09));
+      transform: translateY(-2px);
     }
 
     .card-item-top {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
     }
 
     .notify-logo {
-      width: 60px;
-      height: 60px;
+      width: 48px;
+      height: 48px;
+      padding: 5px;
+      border-radius: var(--radius-sm, 10px);
+      background: color-mix(in srgb, var(--active-color) 7%, transparent);
     }
 
     .notify-info {
       margin-left: 12px;
+      min-width: 0;
     }
 
     .card-item-user {
-      font-size: 18px;
+      font-size: 17px;
+      font-weight: 650;
       color: var(--text-primary);
     }
 
     .card-item-enable {
-      margin-top: 6px;
-      font-weight: 700;
+      position: relative;
+      width: fit-content;
+      margin-top: 7px;
+      padding: 3px 8px 3px 20px;
+      border-radius: var(--radius-pill, 999px);
+      font-size: 12px;
+      font-weight: 650;
+
+      &::before {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        transform: translateY(-50%);
+        content: "";
+      }
     }
 
     .enable-enable {
       color: var(--success-color);
+      background: color-mix(in srgb, var(--success-color) 11%, transparent);
     }
 
     .enable-disable {
-      color: var(--fail-color);
+      color: var(--text-muted);
+      background: color-mix(in srgb, var(--text-muted) 12%, transparent);
     }
 
     .card-item-bottom {
       display: flex;
       align-items: center;
-      justify-content: center;
-      margin-top: 12px;
+      justify-content: flex-end;
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
       flex-wrap: wrap;
       gap: 6px;
     }
   }
 
-  .card-add {
-    font-size: 26px;
-    cursor: pointer;
+  .empty-card {
+    min-height: 180px;
+    padding: 24px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    color: var(--active-color);
-    font-weight: 700;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    background: var(--surface-panel, var(--home-item-background-color));
+    border: 1px dashed color-mix(in srgb, var(--active-color) 36%, var(--border-color));
+    border-radius: var(--radius-md, 14px);
+    font: inherit;
+    cursor: pointer;
+
+    .empty-icon {
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--active-color);
+      background: color-mix(in srgb, var(--active-color) 10%, transparent);
+      border-radius: 50%;
+    }
+
+    &:hover {
+      border-style: solid;
+      background: color-mix(in srgb, var(--active-color) 3%, var(--home-item-background-color));
+    }
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--active-color) 55%, transparent);
+      outline-offset: 2px;
+    }
   }
 
 }
@@ -478,18 +574,22 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .notify {
+    .notify-toolbar {
+      padding: 12px 12px 6px;
+    }
+
     .card-box {
       grid-template-columns: minmax(0, 1fr);
-      padding: 4px;
+      padding: 10px 12px 20px;
     }
 
     .card-item {
       min-height: 0;
-      margin: 4px;
-      padding: 12px;
+      margin: 0;
+      padding: 16px;
 
       .card-item-top {
-        justify-content: flex-start;
+        justify-content: flex-end;
       }
 
       .notify-info {
@@ -501,9 +601,8 @@ onMounted(() => {
       }
     }
 
-    .card-add {
-      min-height: 96px;
-      justify-content: center;
+    .empty-card {
+      min-height: 160px;
     }
   }
 

@@ -39,9 +39,18 @@ network:
   unknown: Unknown system error
 login:
   title: Password Login
+  eyebrow: MEDIA OPERATIONS
+  headline: Make every sync visible
+  description: Connect media directories, sync jobs, and naming flows in one calm and precise workspace.
+  featureSync: Path Sync
+  featureRename: Smart Naming
+  featureObserve: Observable Status
+  welcome: Welcome back
+  subtitle: Sign in to continue managing your media workflow
   loginBtn: Login
   userName: Please enter username
   userNameLabel: Username
+  passwdLabel: Password
   userNameRule: Please enter username
   passwd: Please enter password
   passwdRule: Please enter password
@@ -77,6 +86,8 @@ menu:
   engine: Engines
   notify: Notifications
   setting: Settings
+  expand: Expand sidebar
+  collapse: Collapse sidebar
 home:
   jobManagement: Job Management
   mobileJobCount: "{count} jobs"
@@ -252,6 +263,9 @@ engine:
 engineScraping:
   defaultEngine: Default Engine
   defaultEnginePlaceholder: Select the OpenList engine to open by default
+  tmdbApiServer: API Server
+  tmdbApiServerPlaceholder: Select or enter a full HTTP(S) URL
+  tmdbApiServerTip: Enter a custom HTTP(S) URL and press Enter to use it
   language: Language
   matchOptions: Match Options
   tmdbRequired: Require TMDb configuration
@@ -442,6 +456,7 @@ notify:
     lark: Lark Bot
 refresh:
   auto: Auto refresh
+  manual: Refresh now
 theme:
   toggle: Toggle color theme
 pathSelect:
@@ -449,6 +464,39 @@ pathSelect:
   selectFirst: Select a path first
 setting:
   title: Settings
+  subtitle: Manage your account, network, rules, notifications, and runtime information
+  accountSecurity: Account & Security
+  proxyServer: Proxy Server
+  globalExclude: Global Excludes
+  notifications: Notifications
+  about: About
+  accountDescription: Manage the current account and access password
+  securityTitle: Update access password
+  securityDescription: Regular password updates help reduce unauthorized access
+  proxyServerTitle: Proxy Server
+  proxyServerDescription: Configure an HTTP or SOCKS proxy; the protocol is detected from the URL
+  proxyServerScope: Network features that support proxies share this setting; TMDb API requests currently use it.
+  proxyEnabled: Enable Proxy
+  proxyUrl: Proxy URL
+  proxyUrlPlaceholder: "http://user:password{'@'}host:port"
+  proxyUrlRequired: Enter a proxy URL when the proxy is enabled
+  proxyUrlInvalid: Enter a valid HTTP or SOCKS proxy URL
+  proxyUrlExamples: "Supports http://host:port, http://user:password{'@'}host:port, and socks://:password{'@'}host:port; percent-encode special characters"
+  proxyCredentialsStored: Credentials are saved and remain unchanged while the URL is unchanged
+  proxyCredentialsReplace: Re-enter the complete credentials when changing the URL
+  proxyClearCredentials: Clear saved credentials
+  proxyCancelClearCredentials: Cancel clearing credentials
+  proxyCredentialsWillClear: The username and password will be cleared when you save
+  proxyShowCredentials: Show complete connection string
+  proxyHideCredentials: Hide complete connection string
+  proxyTest: Test Latency
+  proxyTestTarget: "Test URL: http://www.google.com/generate_204"
+  proxyTestUrlRequired: Enter a proxy URL before testing
+  proxyTestResult: "{latency} ms · HTTP {status}"
+  saveProxy: Save Proxy Settings
+  aboutDescription: A focused workspace for directory sync and media naming
+  projectSource: View project source
+  issueTracker: Report an issue
   username: Username
   version: "OpenListSync version: __version_placeholder__"
   github: Project (GitHub)

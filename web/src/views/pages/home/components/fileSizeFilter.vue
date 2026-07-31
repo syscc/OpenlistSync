@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from "vue";
-import { CircleClose } from "@element-plus/icons-vue";
+import { CircleX } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import {
   bytesFromFileSize,
@@ -90,7 +90,7 @@ const clearMax = () => {
             <el-option v-for="unit in FILE_SIZE_UNITS" :key="unit.value" :label="unit.value" :value="unit.value" />
           </el-select>
           <el-tooltip :content="t('home.clearSizeBoundary')">
-            <el-button :icon="CircleClose" text circle :disabled="minValue === null" @click="clearMin" />
+            <el-button :icon="CircleX" text circle :aria-label="t('home.clearSizeBoundary')" :disabled="minValue === null" @click="clearMin" />
           </el-tooltip>
         </div>
       </div>
@@ -111,7 +111,7 @@ const clearMax = () => {
             <el-option v-for="unit in FILE_SIZE_UNITS" :key="unit.value" :label="unit.value" :value="unit.value" />
           </el-select>
           <el-tooltip :content="t('home.clearSizeBoundary')">
-            <el-button :icon="CircleClose" text circle :disabled="maxValue === null" @click="clearMax" />
+            <el-button :icon="CircleX" text circle :aria-label="t('home.clearSizeBoundary')" :disabled="maxValue === null" @click="clearMax" />
           </el-tooltip>
         </div>
       </div>

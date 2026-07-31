@@ -17,6 +17,23 @@ export function saveSystemConfig(data) {
   });
 }
 
+export function revealProxyServer() {
+  return request({
+    url: "/system/proxy/reveal",
+    method: "get",
+    headers: { isMask: false },
+  });
+}
+
+export function testProxyServer(data = {}) {
+  return request({
+    url: "/system/proxy/test",
+    method: "post",
+    headers: { isMask: false },
+    data,
+  });
+}
+
 export function saveLanguage(language) {
   return request({
     url: "/language",

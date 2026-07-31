@@ -2,12 +2,24 @@
 	<div class="media-task" :style="`min-height: calc(320px + ${currentHeight}px)`">
 		<div class="top-box">
 			<div class="top-box-left">
-					<el-button type="primary" size="small" @click="goback">{{ $t('common.back') }}</el-button>
+					<el-button size="small" @click="goback">
+						<ArrowLeft aria-hidden="true" />
+						<span>{{ $t('common.back') }}</span>
+					</el-button>
 					<el-button type="primary" size="small" @click="rerunJob"
-					:loading="btnLoading">{{ $t('mediaScraping.manualRun') }}</el-button>
+					:loading="btnLoading">
+						<RotateCcw aria-hidden="true" />
+						<span>{{ $t('mediaScraping.manualRun') }}</span>
+					</el-button>
 				</div>
-			<div class="top-box-title">{{ $t('mediaScraping.jobDetail') }}</div>
-					<el-button size="small" :loading="loading" @click="refreshAll">{{ $t('mediaScraping.refresh') }}</el-button>
+			<div class="top-box-title">
+				<ListChecks aria-hidden="true" />
+				<span>{{ $t('mediaScraping.jobDetail') }}</span>
+			</div>
+					<el-button size="small" :loading="loading" @click="refreshAll">
+						<RefreshCw aria-hidden="true" />
+						<span>{{ $t('mediaScraping.refresh') }}</span>
+					</el-button>
 		</div>
 
 		<div class="current-box" v-if="current" :style="`height: ${currentHeight}px;`">
@@ -17,8 +29,8 @@
 						<div class="top-field">
 							{{ $t('mediaScraping.overallProgress') }}:
 							<el-progress :stroke-width="20" :text-inside="true" style="width: 130px;"
-								color="rgba(64, 158, 255, .8)" text-color="#fff"
-								define-back-color="rgba(64, 158, 255, .3)"
+								color="var(--brand-primary-hover)" text-color="var(--text-inverse)"
+								define-back-color="var(--brand-soft)"
 								:percentage="Number(Number(current.summary.progress || 0).toFixed(4))"></el-progress>
 						</div>
 						<div>{{ $t('mediaScraping.currentStatus') }}: {{taskStatusText(current.task.status)}}</div>
@@ -33,7 +45,10 @@
 					</div>
 				</div>
 				<div class="current-box-top-right">
-					<el-button type="danger" @click="abortJob" :loading="btnLoading">{{ $t('mediaScraping.abortTask') }}</el-button>
+					<el-button type="danger" plain @click="abortJob" :loading="btnLoading">
+						<Square aria-hidden="true" />
+						<span>{{ $t('mediaScraping.abortTask') }}</span>
+					</el-button>
 				</div>
 			</div>
 			<div class="task-title-line">
@@ -43,12 +58,13 @@
 			<div class="current-box-bottom">
 				<div class="current-echart-box" ref="progressChart"></div>
 				<div class="current-box-task">
-					<div class="current-box-task-left">
-						<div v-for="item in statusTabs" :key="item.status" @click="changeStatus(item.status)"
+					<div class="current-box-task-left" role="group" :aria-label="$t('mediaScraping.status')">
+						<button v-for="item in statusTabs" :key="item.status" type="button"
+							:aria-pressed="currentStatus === item.status" @click="changeStatus(item.status)"
 							:class="`task-left-item${currentStatus === item.status ? ' is-current' : ''}`">
 							<span>{{ $t(item.labelKey) }}</span>
 							<b>{{statusCount(item)}}</b>
-						</div>
+						</button>
 					</div>
 					<div class="current-box-task-right">
 						<el-table :data="current.taskItemList" height="calc(100% - 36px)" class="table-data"
@@ -93,8 +109,8 @@
 							<el-table-column :label="$t('mediaScraping.status')" width="120">
 									<template #default="scope">
 									<el-progress :stroke-width="20" v-if="Number(scope.row.status) === 1" :text-inside="true"
-										style="width: 90px;" color="rgba(64, 158, 255, .8)" text-color="#fff"
-										define-back-color="rgba(64, 158, 255, .3)" :percentage="Number(itemProgress(scope.row).toFixed(3))"></el-progress>
+										style="width: 90px;" color="var(--brand-primary-hover)" text-color="var(--text-inverse)"
+										define-back-color="var(--brand-soft)" :percentage="Number(itemProgress(scope.row).toFixed(3))"></el-progress>
 									<div :class="`bg-status bg-${itemStatusBg(scope.row.status)}`" v-else>
 										<span v-if="Number(scope.row.status) !== 7">{{taskItemStatusText(scope.row.status)}}</span>
 										<el-popover v-else placement="top-end" :title="$t('mediaScraping.failedReason')" width="220" trigger="hover"
@@ -149,9 +165,15 @@
 						<template #default="scope">
 							<el-button type="danger" @click="deleteTask(scope.row)"
 							:loading="btnLoading" :disabled="scope.row.status == 1"
-								size="small">{{scope.row.status == 1 ? $t('mediaScraping.deleteUnavailable') : $t('common.delete')}}</el-button>
-							<el-button type="primary" @click="detail(scope.row)"
-								:loading="btnLoading" size="small" v-if="scope.row.total != 0 && Number(scope.row.status) !== 1">{{ $t('mediaScraping.detail') }}</el-button>
+								size="small" plain>
+								<Trash2 aria-hidden="true" />
+								<span>{{scope.row.status == 1 ? $t('mediaScraping.deleteUnavailable') : $t('common.delete')}}</span>
+							</el-button>
+							<el-button @click="detail(scope.row)" :loading="btnLoading" size="small"
+								v-if="scope.row.total != 0 && Number(scope.row.status) !== 1">
+								<Eye aria-hidden="true" />
+								<span>{{ $t('mediaScraping.detail') }}</span>
+							</el-button>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -173,6 +195,15 @@
 </template>
 
 <script>
+	import {
+		ArrowLeft,
+		Eye,
+		ListChecks,
+		RefreshCw,
+		RotateCcw,
+		Square,
+		Trash2
+	} from "@lucide/vue";
 	import * as echarts from "echarts";
 	import {
 		abortMediaScrapingJob,
@@ -185,6 +216,15 @@
 
 	export default {
 		name: 'MediaScrapingTask',
+		components: {
+			ArrowLeft,
+			Eye,
+			ListChecks,
+			RefreshCw,
+			RotateCcw,
+			Square,
+			Trash2
+		},
 		data() {
 			return {
 				taskData: {
@@ -734,14 +774,16 @@
 		width: 100%;
 		height: 100%;
 		overflow-y: auto;
-		padding: 16px;
+		padding: 20px;
 		box-sizing: border-box;
+		color: var(--text-primary);
 
 		.top-box {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			margin-bottom: 16px;
+			min-height: 34px;
 		}
 
 		.top-box-left {
@@ -751,18 +793,30 @@
 		}
 
 		.top-box-title {
-			font-weight: bold;
+			font-size: 18px;
+			font-weight: 700;
+			letter-spacing: 0;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.top-box-title svg {
+			width: 19px;
+			height: 19px;
+			color: var(--active-color);
 		}
 
 		.current-box {
-			background-color: var(--home-item-background-color);
+			background: var(--home-item-background-color);
 			border: 1px solid var(--border-color);
-			border-radius: 6px;
-			padding: 2px 10px;
+			border-radius: 8px;
+			padding: 8px 14px;
 			width: 100%;
 			box-sizing: border-box;
 			overflow-x: auto;
-			transition: height 0.5s ease;
+			transition: height .22s ease;
+			box-shadow: 0 10px 30px rgba(15, 23, 42, .045);
 		}
 
 		.current-box-top {
@@ -857,6 +911,16 @@
 			align-items: center;
 			justify-content: flex-end;
 			gap: 4px;
+			border: 0;
+			border-radius: 8px 0 0 8px;
+			background: transparent;
+			font: inherit;
+			transition: color .16s ease, background-color .16s ease;
+		}
+
+		.task-left-item:focus-visible {
+			outline: 2px solid var(--active-color);
+			outline-offset: -2px;
 		}
 
 		.task-left-item b {
@@ -867,9 +931,9 @@
 		}
 
 		.task-left-item.is-current {
-			color: #409eff;
-			border-right: 3px solid #409eff;
-			background-color: rgba(64, 158, 255, .4);
+			color: var(--active-color);
+			border-right: 3px solid var(--active-color);
+			background-color: var(--brand-soft);
 		}
 
 		.current-box-task-right {
@@ -879,7 +943,11 @@
 		}
 
 		.table-box {
-			transition: height 0.5s ease;
+			transition: height .22s ease;
+			border: 1px solid var(--border-color);
+			border-radius: 8px;
+			overflow: hidden;
+			background: var(--home-item-background-color);
 		}
 
 		.prgNum {
@@ -916,11 +984,11 @@
 		}
 
 		.path-cell.changed {
-			color: #67c23a;
+			color: var(--success-color);
 		}
 
 		.stderr {
-			color: #f56c6c;
+			color: var(--fail-color);
 		}
 
 		.detail-expand {
@@ -941,6 +1009,16 @@
 
 		.expand-value {
 			word-break: break-all;
+		}
+
+		:deep(.el-button > svg) {
+			width: 15px;
+			height: 15px;
+			stroke-width: 1.8;
+		}
+
+		:deep(.el-button > svg + span) {
+			margin-left: 6px;
 		}
 	}
 
@@ -1032,6 +1110,7 @@
 				padding: 4px 8px;
 				justify-content: center;
 				text-align: center;
+				border-radius: 8px 8px 0 0;
 			}
 
 			.task-left-item.is-current {
@@ -1126,6 +1205,16 @@
 			.expand-label {
 				display: block;
 				width: auto;
+			}
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.media-task {
+			.current-box,
+			.table-box,
+			.task-left-item {
+				transition: none;
 			}
 		}
 	}

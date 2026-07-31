@@ -14,6 +14,7 @@ from media_tools.openlist_media_renamer import (
     DEFAULT_MEDIA_EXTENSIONS,
     DEFAULT_MOVIE_TEMPLATE,
     DEFAULT_RENAME_THREADS,
+    DEFAULT_TMDB_API_URL,
     DEFAULT_TV_TEMPLATE,
     MediaInfo,
     RenamePlan,
@@ -26,11 +27,13 @@ from media_tools.openlist_media_renamer import (
     collect_files,
     join_openlist_path,
     normalize_openlist_path,
+    normalize_tmdb_api_url,
     plan_for_file,
     run as run_media_renamer,
 )
 from service.notify import notifyService
 from service.openlist import openlistService
+from service.system import configService
 
 
 MEDIA_SCRAPING_CONFIG_KEY = 'media_scraping'
@@ -49,6 +52,7 @@ def _default_config():
         'openlistIds': [],
         'tmdbApiKey': '',
         'tmdbBearerToken': '',
+        'tmdbApiUrl': DEFAULT_TMDB_API_URL,
         'tmdbLanguage': 'zh-CN',
         'tmdbIncludeAdult': False,
         'tmdbRequired': True,
@@ -250,6 +254,7 @@ def _normalize_config(config):
         'openlistIds': normalized_openlist_ids,
         'tmdbApiKey': str(config.get('tmdbApiKey') or '').strip(),
         'tmdbBearerToken': str(config.get('tmdbBearerToken') or '').strip(),
+        'tmdbApiUrl': normalize_tmdb_api_url(config.get('tmdbApiUrl') or default_config['tmdbApiUrl']),
         'tmdbLanguage': str(config.get('tmdbLanguage') or default_config['tmdbLanguage']).strip() or default_config['tmdbLanguage'],
         'tmdbIncludeAdult': _to_bool(config.get('tmdbIncludeAdult'), default_config['tmdbIncludeAdult']),
         'tmdbRequired': _to_bool(config.get('tmdbRequired'), default_config['tmdbRequired']),
@@ -1480,6 +1485,7 @@ def updateConfig(req):
 
 
 def _build_runner_config(config, openlist):
+    proxy_server = configService.getProxyServer()
     rules = []
     for rule in config['rules']:
         item = {
@@ -1505,10 +1511,14 @@ def _build_runner_config(config, openlist):
         'tmdb': {
             'api_key': config['tmdbApiKey'],
             'bearer_token': config['tmdbBearerToken'],
+            'api_base_url': config['tmdbApiUrl'],
             'language': config['tmdbLanguage'],
             'include_adult': config['tmdbIncludeAdult'],
             'required': config['tmdbRequired'],
             'timeout': config['tmdbTimeout'],
+            'proxy': {
+                'url': proxy_server['url'] if proxy_server['enabled'] else '',
+            },
         },
         'dry_run': config['dryRun'],
         'overwrite': config['overwrite'],
