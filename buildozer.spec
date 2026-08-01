@@ -9,7 +9,7 @@ source.include_exts = py,png,jpg,jpeg,html,js,css,ttf,otf,svg,ico,json,gif,woff,
 source.include_patterns = front/**,locales/**,common/**,controller/**,mapper/**,media_tools/**,service/**,doc/config.ini
 source.exclude_patterns = .git/**,.venv/**,data/**,tests/**,web/**
 
-version = 0.3.1
+version = 0.3.2
 
 requirements = python3,pyjnius,android,tornado,requests,pysocks,urllib3,certifi,chardet,idna,apscheduler,tzlocal,tzdata,setuptools,configparser,pathspec,pyyaml,openssl,sqlite3
 

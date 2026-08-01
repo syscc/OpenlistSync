@@ -430,7 +430,7 @@ class TmdbConfigurationTests(unittest.TestCase):
                 side_effect=lambda key: store.get(key)), mock.patch.object(
                 configService.systemConfigMapper,
                 'setConfigValue',
-                side_effect=set_value) as set_mock:
+                side_effect=set_value):
             result = configService.getConfig()
             self.assertEqual({
                 'enabled': True,
@@ -459,15 +459,6 @@ class TmdbConfigurationTests(unittest.TestCase):
             result = configService.updateConfig({'globalExclude': ['*.nfo', '@eaDir']})
             self.assertEqual('*.nfo:@eaDir', result['globalExclude'])
             self.assertEqual(previous_proxy, store[configService.PROXY_SERVER_KEY])
-
-            result = configService.updateConfig({
-                'proxyServer': {'clearCredentials': True},
-            })
-            saved_proxy = json.loads(store[configService.PROXY_SERVER_KEY])
-            self.assertEqual('http://old-proxy.local:8080', saved_proxy['url'])
-            self.assertFalse(result['proxyServer']['passwordSet'])
-            self.assertNotIn('password', result['proxyServer'])
-            self.assertGreaterEqual(set_mock.call_count, 3)
 
     def test_system_config_accepts_proxy_url_auth_variants_and_new_key_wins(self):
         cases = [
@@ -701,6 +692,38 @@ class TmdbConfigurationTests(unittest.TestCase):
             configService.PROXY_TEST_URL,
             timeout=configService.PROXY_TEST_TIMEOUT,
             proxies=client.proxies,
+            allow_redirects=False,
+        )
+        response.close.assert_called_once_with()
+        session.close.assert_called_once_with()
+
+    def test_proxy_latency_test_uses_direct_connection_without_proxy_url(self):
+        response = mock.Mock(status_code=204)
+        session = mock.Mock()
+        session.get.return_value = response
+
+        with mock.patch.object(
+                configService,
+                'getProxyServer',
+                return_value={'enabled': False, 'url': ''}), mock.patch.object(
+                configService.mediaRenamer.requests,
+                'Session',
+                return_value=session), mock.patch.object(
+                configService.time,
+                'monotonic',
+                side_effect=[10.0, 10.123]):
+            result = configService.testProxyServer({})
+
+        self.assertEqual({
+            'url': configService.PROXY_TEST_URL,
+            'latencyMs': 123,
+            'statusCode': 204,
+        }, result)
+        self.assertFalse(session.trust_env)
+        session.get.assert_called_once_with(
+            configService.PROXY_TEST_URL,
+            timeout=configService.PROXY_TEST_TIMEOUT,
+            proxies={},
             allow_redirects=False,
         )
         response.close.assert_called_once_with()

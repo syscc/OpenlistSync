@@ -484,14 +484,10 @@ setting:
   proxyUrlExamples: "支持 http://host:port、http://user:password{'@'}host:port、socks://:password{'@'}host:port；特殊字符请使用 URL 编码"
   proxyCredentialsStored: 已保存认证信息；地址未修改时将保持不变
   proxyCredentialsReplace: 修改地址时请重新填写完整认证信息
-  proxyClearCredentials: 清除已保存的认证信息
-  proxyCancelClearCredentials: 取消清除认证信息
-  proxyCredentialsWillClear: 保存后将清除用户名和密码
   proxyShowCredentials: 显示完整连接串
   proxyHideCredentials: 隐藏完整连接串
   proxyTest: 测试延迟
   proxyTestTarget: "测试地址：http://www.google.com/generate_204"
-  proxyTestUrlRequired: 测试前请输入代理地址
   proxyTestResult: "{latency} ms · HTTP {status}"
   saveProxy: 保存代理设置
   aboutDescription: 一个专注于目录同步与媒体命名的轻量工作台

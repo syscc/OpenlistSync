@@ -179,14 +179,6 @@ def _safe_proxy_url(url):
     ))
 
 
-def _strip_proxy_credentials(url):
-    if not url:
-        return ''
-    parts = urllib.parse.urlsplit(url)
-    host_port = parts.netloc.rsplit('@', 1)[-1]
-    return urllib.parse.urlunsplit((parts.scheme, host_port, '', '', ''))
-
-
 def _public_proxy_server(proxy):
     url = proxy.get('url') or ''
     parts = urllib.parse.urlsplit(url)
@@ -210,19 +202,13 @@ def _proxy_url_for_test(req):
     if 'url' in req:
         submitted_url = _normalize_proxy_url(req.get('url'))
 
-    if _to_bool(req.get('clearCredentials'), False):
-        proxy_url = _strip_proxy_credentials(
-            current_url if submitted_url is None else submitted_url
-        )
-    elif submitted_url is None:
+    if submitted_url is None:
         proxy_url = current_url
     elif submitted_url == _safe_proxy_url(current_url):
         proxy_url = current_url
     else:
         proxy_url = submitted_url
 
-    if not proxy_url:
-        raise Exception('Proxy server URL is required for latency test')
     return proxy_url
 
 
@@ -303,9 +289,6 @@ def updateConfig(req):
                     if submitted_url == _safe_proxy_url(current['url'])
                     else submitted_url
                 )
-                update_proxy = True
-            if _to_bool(update.get('clearCredentials'), False):
-                proxy_url_to_save = _strip_proxy_credentials(proxy_url_to_save)
                 update_proxy = True
             if 'enabled' in update:
                 update_proxy = True

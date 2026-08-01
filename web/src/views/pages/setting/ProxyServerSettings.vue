@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { getSystemConfig, revealProxyServer, saveSystemConfig, testProxyServer } from "@/api/system";
 import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
-import { Eye, EyeOff, Gauge, LoaderCircle, Network, Save, Trash2, Undo2 } from "@lucide/vue";
+import { Eye, EyeOff, Gauge, LoaderCircle, Network, Save } from "@lucide/vue";
 
 const { t } = useI18n();
 const formRef = ref();
@@ -20,7 +20,6 @@ const proxy = ref({
   enabled: false,
   url: "",
   passwordSet: false,
-  clearCredentials: false,
 });
 
 const urlChanged = computed(() => proxy.value.url.trim() !== initialUrl.value);
@@ -31,7 +30,6 @@ const applyConfig = (config = {}) => {
     enabled: Boolean(value.enabled),
     url: String(value.url || ""),
     passwordSet: Boolean(value.passwordSet),
-    clearCredentials: false,
   };
   initialUrl.value = proxy.value.url;
   credentialsVisible.value = false;
@@ -76,12 +74,6 @@ const loadConfig = () => {
 };
 
 const onUrlInput = () => {
-  proxy.value.clearCredentials = false;
-  testResult.value = null;
-};
-
-const toggleClearCredentials = () => {
-  proxy.value.clearCredentials = !proxy.value.clearCredentials;
   testResult.value = null;
 };
 
@@ -117,20 +109,12 @@ const buildProxyTestPayload = () => {
   if (urlChanged.value) {
     payload.url = proxy.value.url.trim();
   }
-  if (proxy.value.clearCredentials) {
-    payload.clearCredentials = true;
-  }
   return payload;
 };
 
 const runProxyTest = () => {
   formRef.value.validate((valid) => {
     if (!valid) return;
-    if (!proxy.value.url.trim()) {
-      ElMessage({ message: t("setting.proxyTestUrlRequired"), type: "warning" });
-      return;
-    }
-
     testing.value = true;
     testResult.value = null;
     testProxyServer(buildProxyTestPayload())
@@ -151,9 +135,6 @@ const saveConfig = () => {
     const proxyServer = { enabled: proxy.value.enabled };
     if (urlChanged.value) {
       proxyServer.url = proxy.value.url.trim();
-    }
-    if (proxy.value.clearCredentials) {
-      proxyServer.clearCredentials = true;
     }
 
     saving.value = true;
@@ -224,24 +205,9 @@ onMounted(loadConfig);
                 </button>
               </template>
             </el-input>
-            <el-tooltip
-              v-if="proxy.passwordSet && !urlChanged"
-              :content="proxy.clearCredentials ? $t('setting.proxyCancelClearCredentials') : $t('setting.proxyClearCredentials')"
-              placement="top"
-            >
-              <el-button
-                class="credential-button"
-                :type="proxy.clearCredentials ? 'default' : 'danger'"
-                :icon="proxy.clearCredentials ? Undo2 : Trash2"
-                :disabled="revealing"
-                :aria-label="proxy.clearCredentials ? $t('setting.proxyCancelClearCredentials') : $t('setting.proxyClearCredentials')"
-                @click="toggleClearCredentials"
-              />
-            </el-tooltip>
           </div>
           <p class="field-tip">{{ $t("setting.proxyUrlExamples") }}</p>
-          <p v-if="proxy.clearCredentials" class="credential-warning">{{ $t("setting.proxyCredentialsWillClear") }}</p>
-          <p v-else-if="proxy.passwordSet && !urlChanged" class="credential-status">{{ $t("setting.proxyCredentialsStored") }}</p>
+          <p v-if="proxy.passwordSet && !urlChanged" class="credential-status">{{ $t("setting.proxyCredentialsStored") }}</p>
           <p v-else-if="proxy.passwordSet && urlChanged" class="credential-warning">{{ $t("setting.proxyCredentialsReplace") }}</p>
         </el-form-item>
 
@@ -381,14 +347,6 @@ onMounted(loadConfig);
     min-width: 0;
     flex: 1;
   }
-}
-
-.credential-button {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  margin: 0;
-  padding: 0;
 }
 
 .reveal-button {

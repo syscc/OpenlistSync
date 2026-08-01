@@ -183,7 +183,7 @@
 - OpenList 批量移动超时时会刷新源/目标目录做二次核验，实际已完成的文件会补成功日志。
 - 任务完成、部分失败、失败或中止后，会复用通知配置发送媒体刮削任务结果。
 
-TMDb API 服务器默认为 `https://api.themoviedb.org`，可选择备用的 `https://api.tmdb.org`，也可输入自定义 HTTP/HTTPS 地址。如果所在网络需要代理，可在 `系统设置 -> 代理服务器` 中填写 `http://host:port` 或 `socks://host:port`；也支持 `user:password` 认证以及 `:password` 形式的仅密码认证。SOCKS5 仅密码认证使用零长度用户名兼容形式，需要代理服务器支持。代理地址保存后默认隐藏认证信息，点击输入框右侧的显示按钮可按需查看完整连接串。代理设置页可使用固定地址 `http://www.google.com/generate_204` 测试代理延迟，当前代理用于后端 TMDb API 请求。
+TMDb API 服务器默认为 `https://api.themoviedb.org`，可选择备用的 `https://api.tmdb.org`，也可输入自定义 HTTP/HTTPS 地址。如果所在网络需要代理，可在 `系统设置 -> 代理服务器` 中填写 `http://host:port` 或 `socks://host:port`；也支持 `user:password` 认证以及 `:password` 形式的仅密码认证。SOCKS5 仅密码认证使用零长度用户名兼容形式，需要代理服务器支持。代理地址保存后默认隐藏认证信息，点击输入框右侧的显示按钮可按需查看完整连接串。代理设置页可使用固定地址 `http://www.google.com/generate_204` 测试延迟；未填写代理地址时会直接连接，当前代理用于后端 TMDb API 请求。
 
 ## 使用方法
 
